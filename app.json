@@ -1,7 +1,10 @@
 {
   "expo": {
     "scheme": "acme",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "android": {
+      "softwareKeyboardLayoutMode": "pan"
+    },
     "orientation": "default",
     "web": {
       "output": "static"
@@ -12,7 +15,10 @@
         {
           "origin": "https://n"
         }
-      ]
+      ],
+      "@clerk/expo",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "name": "fit-app",
     "slug": "fit-app"
