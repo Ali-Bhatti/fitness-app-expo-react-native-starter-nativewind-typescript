@@ -1,3 +1,4 @@
+import FitTrackerLogo from '@/components/FitTrackerLogo'
 import SpinningIcon from '@/components/SpinningIcon'
 import { ThemedView } from '@/components/themed-view'
 import { useAuth, useSignUp } from '@clerk/expo'
@@ -22,16 +23,6 @@ const cardShadow = Platform.select({
         shadowRadius: 12,
     },
     android: { elevation: 5 },
-})
-
-const iconBoxShadow = Platform.select({
-    ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-    },
-    android: { elevation: 3 },
 })
 
 export default function Page() {
@@ -158,12 +149,7 @@ export default function Page() {
                 >
                     {/* Header Section */}
                     <View className="items-center mb-8">
-                        <View
-                            className="bg-[#0a7ea4]/10 rounded-2xl mb-4"
-                            style={[iconBoxShadow, { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' }]}
-                        >
-                            <Ionicons name="fitness" size={40} color="#0a7ea4" />
-                        </View>
+                        <FitTrackerLogo />
                         <Text className="text-3xl font-bold text-gray-900 mb-2">Join FitTracker</Text>
                         <Text className="text-lg text-gray-600 text-center">
                             Start your fitness journey{'\n'}and achieve your goals

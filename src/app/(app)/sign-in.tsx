@@ -1,3 +1,4 @@
+import FitTrackerLogo from '@/components/FitTrackerLogo'
 import GoogleSignIn from '@/components/GoogleSignIn'
 import SpinningIcon from '@/components/SpinningIcon'
 import { ThemedView } from '@/components/themed-view'
@@ -25,23 +26,12 @@ const cardShadow = Platform.select({
     android: { elevation: 5 },
 })
 
-const iconBoxShadow = Platform.select({
-    ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-    },
-    android: { elevation: 3 },
-})
-
 export default function Page() {
     const { signIn, errors, fetchStatus } = useSignIn()
 
 
     const [emailAddress, setEmailAddress] = React.useState('')
     const [password, setPassword] = React.useState('')
-    const [code, setCode] = React.useState('')
     const [isLoading, setIsLoading] = React.useState(false)
     const [showPassword, setShowPassword] = React.useState(false)
 
@@ -50,7 +40,6 @@ export default function Page() {
             void signIn.reset()
             setEmailAddress('')
             setPassword('')
-            setCode('')
             setIsLoading(false)
         }, []),
     )
@@ -81,19 +70,6 @@ export default function Page() {
         setIsLoading(false)
     }
 
-    const handleVerify = async () => {
-        setIsLoading(true)
-        await signIn.mfa.verifyEmailCode({ code })
-        if (signIn.status === 'complete') {
-            await signIn.finalize()
-            setIsLoading(false)
-        } else {
-            console.log('Sign-in attempt not complete:', signIn.status)
-            setIsLoading(false)
-        }
-    }
-
-
     return (
         <ThemedView lightColor="#f3f4f6" className="flex-1">
             <KeyboardAvoidingView
@@ -106,12 +82,7 @@ export default function Page() {
                 >
                     {/* Header Section */}
                     <View className="items-center mb-8">
-                        <View
-                            className="bg-[#0a7ea4]/10 rounded-2xl mb-4"
-                            style={[iconBoxShadow, { width: 80, height: 80, alignItems: 'center', justifyContent: 'center' }]}
-                        >
-                            <Ionicons name="fitness" size={40} color="#0a7ea4" />
-                        </View>
+                        <FitTrackerLogo />
                         <Text className="text-3xl font-bold text-gray-900 mb-2">FitTracker</Text>
                         <Text className="text-lg text-gray-600 text-center">
                             Track your fitness journey{'\n'}and reach your goals
