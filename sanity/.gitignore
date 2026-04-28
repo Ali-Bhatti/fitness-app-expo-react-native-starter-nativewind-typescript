@@ -29,3 +29,6 @@
 *.local
 .agents
 .claude
+
+.env
+scripts/data

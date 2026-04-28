@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons'
 import * as React from 'react'
 import { Platform, Pressable, Text } from 'react-native'
 
+// Source link: https://clerk.com/docs/guides/development/custom-flows/authentication/oauth-connections
+
 export const useWarmUpBrowser = () => {
     React.useEffect(() => {
         if (Platform.OS !== 'android') return
