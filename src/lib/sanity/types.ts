@@ -216,3 +216,33 @@ export type AllSanitySchemaTypes =
   | SanityImageAsset
   | Geopoint
   | Slug;
+
+// Source: ../src/app/(app)/(tabs)/exercises.tsx
+// Variable: EXERCISES_QUERY
+// Query: *[_type == "exercise" && isActive == true    && ($search == "" || name match $search + "*" || description match $search + "*")] | order(name asc) {    _id,    name,    description,    difficulty,    target,    "imageUrl": image.asset->url}
+export type EXERCISES_QUERY_RESULT = Array<{
+  _id: string;
+  name: string | null;
+  description: string | null;
+  difficulty: "advanced" | "beginner" | "intermediate" | null;
+  target: string | null;
+  imageUrl: string | null;
+}>;
+
+// Source: ../src/app/(app)/(tabs)/exercises.tsx
+// Variable: exerciseQueryDQ
+// Query: *[_type == "exercise"] | order(name asc) {    _id,    name,    description,    difficulty,    target,    image}
+export type ExerciseQueryDQResult = Array<{
+  _id: string;
+  name: string | null;
+  description: string | null;
+  difficulty: "advanced" | "beginner" | "intermediate" | null;
+  target: string | null;
+  image: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  } | null;
+}>;
