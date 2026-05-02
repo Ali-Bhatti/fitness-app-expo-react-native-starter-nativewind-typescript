@@ -246,3 +246,22 @@ export type ExerciseQueryDQResult = Array<{
     _type: "image";
   } | null;
 }>;
+
+// Source: ../src/app/(app)/exercise-detail.tsx
+// Variable: EXERCISE_DETAIL_QUERY
+// Query: *[_type == "exercise" && _id == $id][0] {    _id,    name,    description,    difficulty,    target,    videoUrl,    image,}
+export type EXERCISE_DETAIL_QUERY_RESULT = {
+  _id: string;
+  name: string | null;
+  description: string | null;
+  difficulty: "advanced" | "beginner" | "intermediate" | null;
+  target: string | null;
+  videoUrl: string | null;
+  image: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  } | null;
+} | null;
