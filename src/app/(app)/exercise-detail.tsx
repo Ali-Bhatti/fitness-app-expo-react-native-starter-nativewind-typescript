@@ -8,10 +8,12 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import DifficultyBadge from '@/components/DifficultyBadge'
 import { sanityClient, urlFor } from '@/lib/sanity/client'
 import { Exercise } from '@/lib/sanity/types'
+import Markdown from 'react-native-markdown-display'
 
 const EXERCISE_DETAIL_QUERY = groq`*[_type == "exercise" && _id == $id][0] {
     _id,
     name,
+    alternateNames,
     description,
     difficulty,
     target,
@@ -24,6 +26,8 @@ export default function ExerciseDetail() {
     const { id } = useLocalSearchParams<{ id: string }>()
     const [exercise, setExercise] = useState<Exercise | null>(null)
     const [loading, setLoading] = useState(true)
+    const [aiLoading, setAiLoading] = useState(false)
+    const [aiGuidance, setAiGuidance] = useState<string | null>(null)
     const colorScheme = useColorScheme()
 
     useEffect(() => {
@@ -47,13 +51,46 @@ export default function ExerciseDetail() {
             <SafeAreaView className='flex-1 bg-white items-center justify-center'>
                 <Text className='text-gray-500 text-base'>Exercise not found</Text>
                 <Pressable onPress={() => router.back()} className='mt-4'>
-                    <Text className='text-[#0a7ea4] font-semibold'>Go Back</Text>
+                    <Text className='text-primary font-semibold'>Go Back</Text>
                 </Pressable>
             </SafeAreaView>
         )
     }
 
-    const getAIGuidance = () => {}
+    const getAIGuidance = async () => {
+        if (!exercise) return;
+
+        setAiLoading(true)
+        setAiGuidance(null)
+
+        try {
+            const response = await fetch("/api/ai", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ exerciseName: exercise.name, alternateNames: exercise.alternateNames }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || `Request failed with status ${response.status}`)
+            }
+
+            if (!data.aiGuidance) {
+                throw new Error('No guidance received from AI')
+            }
+
+            setAiGuidance(data.aiGuidance)
+        } catch (error) {
+            console.error("Error fetching AI guidance:", error)
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            setAiGuidance(`**Unable to get AI guidance**\n\n${message}. Please try again later.`)
+        } finally {
+            setAiLoading(false)
+        }
+    }
 
     const imageUrl = exercise.image ? urlFor(exercise.image).url() : null
 
@@ -122,7 +159,7 @@ export default function ExerciseDetail() {
                             <Text className='text-base font-bold text-gray-900 mb-3'>Video Tutorial</Text>
                             <Pressable
                                 onPress={() => Linking.openURL(exercise.videoUrl!)}
-                                className='bg-[#C06B6E] rounded-2xl p-4 flex-row items-center gap-4 active:opacity-80'
+                                className='bg-secondary rounded-2xl p-4 flex-row items-center gap-4 active:opacity-80'
                             >
                                 <View className='w-10 h-10 rounded-full bg-white/20 items-center justify-center'>
                                     <AntDesign name='playcircleo' size={22} color='white' />
@@ -135,18 +172,92 @@ export default function ExerciseDetail() {
                         </View>
                     ) : null}
 
+                    {/* AI Guidance Content */}
+                    {aiLoading && (
+                        <View className='mt-6 flex-row items-center gap-3'>
+                            <ActivityIndicator size="small" color="#0a7ea4" />
+                            <Text className='text-gray-600 text-sm'>Generating AI guidance...</Text>
+                        </View>
+                    )}
+
+                    {!aiLoading && aiGuidance && (
+                        <View className='mt-6'>
+                            <View className='flex-row items-center gap-2 mb-3'>
+                                <AntDesign name='heart' size={16} color='#0a7ea4' />
+                                <Text className='text-base font-bold text-gray-900'>AI Coach says...</Text>
+                            </View>
+                            <View
+                                className='bg-gray-50 rounded-2xl p-4 border-l-4 border-primary'
+                            >
+                                <Markdown
+                                    style={{
+                                        body: {
+                                            color: '#4B5563',
+                                            fontSize: 14,
+                                            lineHeight: 22,
+                                        },
+                                        heading2: {
+                                            color: '#1F2937',
+                                            fontSize: 16,
+                                            fontWeight: 'bold',
+                                            marginTop: 12,
+                                            marginBottom: 4,
+                                        },
+                                        heading3: {
+                                            color: '#1F2937',
+                                            fontSize: 15,
+                                            fontWeight: '600',
+                                            marginTop: 10,
+                                            marginBottom: 4,
+                                        },
+                                        strong: {
+                                            color: '#374151',
+                                            fontWeight: 'bold',
+                                        },
+                                        bullet_list: {
+                                            marginTop: 4,
+                                            marginBottom: 4,
+                                        },
+                                        ordered_list: {
+                                            marginTop: 4,
+                                            marginBottom: 4,
+                                        },
+                                        list_item: {
+                                            marginBottom: 4,
+                                        },
+                                        paragraph: {
+                                            marginTop: 2,
+                                            marginBottom: 6,
+                                        },
+                                    }}
+                                >
+                                    {aiGuidance}
+                                </Markdown>
+                            </View>
+                        </View>
+                    )}
+
                     {/* AI Guidance */}
-                    <Pressable 
-                        className='mt-6 bg-[#0a7ea4] rounded-2xl py-4 items-center active:opacity-80'
+                    <Pressable
+                        className={`mt-6 rounded-2xl py-4 items-center active:opacity-80 ${aiGuidance ? 'bg-green' : 'bg-primary'}`}
                         onPress={getAIGuidance}
                     >
-                        <Text className='text-white font-bold text-base'>Get AI Guidance on Form & Technique</Text>
+                        {aiLoading ? (
+                            <View className='flex-row items-center gap-2'>
+                                <ActivityIndicator size="small" color="#ffffff" />
+                                <Text className='text-white font-bold text-base'>Loading...</Text>
+                            </View>
+                        ) : (
+                            <Text className='text-white font-bold text-base'>
+                                {aiGuidance ? 'Re-Generate AI Guidance' : 'Get AI Guidance on Form & Technique'}
+                            </Text>
+                        )}
                     </Pressable>
 
                     {/* Close */}
                     <Pressable
                         onPress={() => router.back()}
-                        className='mt-3 bg-gray-100 rounded-2xl py-4 items-center active:opacity-70'
+                        className='mt-3 bg-gray rounded-2xl py-4 items-center active:opacity-70'
                     >
                         <Text className='text-gray-600 font-semibold text-base'>Close</Text>
                     </Pressable>
