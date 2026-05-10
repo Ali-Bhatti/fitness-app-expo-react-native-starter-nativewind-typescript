@@ -239,7 +239,7 @@ export default function ExerciseDetail() {
 
                     {/* AI Guidance */}
                     <Pressable
-                        className={`mt-6 rounded-2xl py-4 items-center active:opacity-80 ${aiGuidance ? 'bg-green' : 'bg-primary'}`}
+                        className={`mt-6 rounded-2xl py-4 items-center active:opacity-80 ${aiGuidance ? 'bg-ft-green' : 'bg-primary'}`}
                         onPress={getAIGuidance}
                     >
                         {aiLoading ? (
@@ -257,7 +257,7 @@ export default function ExerciseDetail() {
                     {/* Close */}
                     <Pressable
                         onPress={() => router.back()}
-                        className='mt-3 bg-gray rounded-2xl py-4 items-center active:opacity-70'
+                        className='mt-3 bg-ft-gray rounded-2xl py-4 items-center active:opacity-70'
                     >
                         <Text className='text-gray-600 font-semibold text-base'>Close</Text>
                     </Pressable>
