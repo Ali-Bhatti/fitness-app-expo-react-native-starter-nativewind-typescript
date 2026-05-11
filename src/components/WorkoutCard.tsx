@@ -29,8 +29,6 @@ export default function WorkoutCard({ workout, onPress, maxExercises }: Props) {
         >
             <View className='bg-white rounded-2xl p-4 mb-3 mx-4 border border-gray-100'>
 
-
-
                 {/* Header */}
                 <View className='flex-row items-center justify-between mb-3'>
                     <View className='flex-row items-center gap-2'>
