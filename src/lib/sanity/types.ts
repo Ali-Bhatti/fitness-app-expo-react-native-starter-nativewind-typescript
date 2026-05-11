@@ -247,12 +247,58 @@ export type ExerciseQueryDQResult = Array<{
   } | null;
 }>;
 
+// Source: ../src/app/(app)/(tabs)/history/index.tsx
+// Variable: GET_WORKOUTS_QUERY
+// Query: *[_type == "workout" && userId == $userId] | order(date desc) {    _id,    date,    duration,    exercises[] {        exercise->{            _id,            name,            target,            bodyPart        },        sets[] {            reps,            weight,            weightUnit        }    }}
+export type GET_WORKOUTS_QUERY_RESULT = Array<{
+  _id: string;
+  date: string | null;
+  duration: number | null;
+  exercises: Array<{
+    exercise: {
+      _id: string;
+      name: string | null;
+      target: string | null;
+      bodyPart: string | null;
+    } | null;
+    sets: Array<{
+      reps: number | null;
+      weight: number | null;
+      weightUnit: "kg" | "lbs" | null;
+    }> | null;
+  }> | null;
+}>;
+
+// Source: ../src/app/(app)/(tabs)/history/workout-record.tsx
+// Variable: GET_WORKOUT_DETAIL_QUERY
+// Query: *[_type == "workout" && _id == $workoutId][0] {    _id,    date,    duration,    exercises[] {        exercise->{            _id,            name,            target,            bodyPart,            equipment        },        sets[] {            reps,            weight,            weightUnit        }    }}
+export type GET_WORKOUT_DETAIL_QUERY_RESULT = {
+  _id: string;
+  date: string | null;
+  duration: number | null;
+  exercises: Array<{
+    exercise: {
+      _id: string;
+      name: string | null;
+      target: string | null;
+      bodyPart: string | null;
+      equipment: string | null;
+    } | null;
+    sets: Array<{
+      reps: number | null;
+      weight: number | null;
+      weightUnit: "kg" | "lbs" | null;
+    }> | null;
+  }> | null;
+} | null;
+
 // Source: ../src/app/(app)/exercise-detail.tsx
 // Variable: EXERCISE_DETAIL_QUERY
-// Query: *[_type == "exercise" && _id == $id][0] {    _id,    name,    description,    difficulty,    target,    videoUrl,    image,}
+// Query: *[_type == "exercise" && _id == $id][0] {    _id,    name,    alternateNames,    description,    difficulty,    target,    videoUrl,    image,}
 export type EXERCISE_DETAIL_QUERY_RESULT = {
   _id: string;
   name: string | null;
+  alternateNames: Array<string> | null;
   description: string | null;
   difficulty: "advanced" | "beginner" | "intermediate" | null;
   target: string | null;

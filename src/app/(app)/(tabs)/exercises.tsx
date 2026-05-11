@@ -7,6 +7,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Tex
 import { SafeAreaView } from 'react-native-safe-area-context'
 import DifficultyBadge, { Difficulty } from '@/components/DifficultyBadge'
 import ExerciseCard from '@/components/ExerciseCard'
+import TabHeader from '@/components/TabHeader'
 import { sanityClient } from '@/lib/sanity/client'
 import { Exercise } from '@/lib/sanity/types'
 
@@ -142,11 +143,7 @@ export default function Exercises() {
 
     return (
         <SafeAreaView className='flex-1 bg-gray-50' edges={['top']}>
-            {/* Header */}
-            <View className='px-4 pt-2 pb-4'>
-                <Text className='text-3xl font-bold text-gray-900'>Exercise Library</Text>
-                <Text className='text-sm text-gray-500 mt-1'>Discover and master new exercises</Text>
-            </View>
+            <TabHeader title='Exercise Library' subtitle='Discover and master new exercises' />
 
             {/* Search */}
             <SearchBar value={search} onChange={setSearch} />
