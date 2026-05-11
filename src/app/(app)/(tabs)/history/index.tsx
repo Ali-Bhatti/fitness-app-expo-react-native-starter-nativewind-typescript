@@ -3,6 +3,7 @@ import AntDesign from '@expo/vector-icons/AntDesign'
 import groq from 'groq'
 import React, { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native'
+import FTCard from '@/components/FTCard'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import TabHeader from '@/components/TabHeader'
 import WorkoutCard from '@/components/WorkoutCard'
@@ -94,7 +95,7 @@ export default function HistoryPage() {
                     <RefreshControl refreshing={refreshing} onRefresh={() => fetchWorkouts(true)} tintColor='#0a7ea4' title='Pull to refresh workouts' />
                 }
                 ListEmptyComponent={
-                    <View className='flex-1 items-center justify-center pt-24 px-6'>
+                    <FTCard className='mx-4 mt-8 items-center py-8'>
                         <View className='w-16 h-16 rounded-full bg-gray-200 items-center justify-center mb-4'>
                             <AntDesign name='clockcircleo' size={28} color='#9CA3AF' />
                         </View>
@@ -102,7 +103,7 @@ export default function HistoryPage() {
                         <Text className='text-sm text-gray-400 text-center'>
                             Complete your first workout and it will show up here
                         </Text>
-                    </View>
+                    </FTCard>
                 }
             />
         </SafeAreaView>

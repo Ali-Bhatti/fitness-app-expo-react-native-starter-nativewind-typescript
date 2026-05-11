@@ -1,3 +1,4 @@
+import FTCard from '@/components/FTCard'
 import { GET_WORKOUTS_QUERY_RESULT } from '@/lib/sanity/types'
 import { formatDuration, formatRelativeDate } from '@/lib/utils'
 import AntDesign from '@expo/vector-icons/AntDesign'
@@ -27,7 +28,7 @@ export default function WorkoutCard({ workout, onPress, maxExercises }: Props) {
                 elevation: 2,
             }}
         >
-            <View className='bg-white rounded-2xl p-4 mb-3 mx-4 border border-gray-100'>
+            <FTCard className='mb-3 mx-4'>
 
                 {/* Header */}
                 <View className='flex-row items-center justify-between mb-3'>
@@ -97,7 +98,7 @@ export default function WorkoutCard({ workout, onPress, maxExercises }: Props) {
                         +{workout.exercises.length - maxExercises} more exercise{workout.exercises.length - maxExercises !== 1 ? 's' : ''}...
                     </Text>
                 )}
-            </View>
+            </FTCard>
         </Pressable>
     )
 }

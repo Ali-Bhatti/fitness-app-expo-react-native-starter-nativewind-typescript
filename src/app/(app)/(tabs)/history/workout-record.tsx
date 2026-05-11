@@ -1,4 +1,5 @@
 import FTAlert from '@/components/FTAlert'
+import FTCard from '@/components/FTCard'
 import { formatDuration, formatRelativeDate } from '@/lib/utils'
 import { sanityClient } from '@/lib/sanity/client'
 import { GET_WORKOUT_DETAIL_QUERY_RESULT } from '@/lib/sanity/types'
@@ -114,7 +115,7 @@ export default function WorkoutRecord() {
         <>
             <ScrollView className='flex-1 bg-gray-50' contentContainerStyle={{ paddingBottom: 40 }}>
                 {/* Summary Card */}
-                <View className='bg-white mx-4 mt-4 rounded-2xl p-5 border border-gray-100'>
+                <FTCard className='mx-4 mt-4 p-5'>
                     <View className='flex-row items-center justify-between mb-4'>
                         <Text className='text-lg font-bold text-gray-900'>Workout Summary</Text>
                         <Pressable
@@ -153,7 +154,7 @@ export default function WorkoutRecord() {
                             </View>
                         )}
                     </View>
-                </View>
+                </FTCard>
 
                 {/* Exercise Cards */}
                 <View className='mx-4 mt-5'>
@@ -162,7 +163,7 @@ export default function WorkoutRecord() {
                         const setCount = ex.sets?.length ?? 0
 
                         return (
-                            <View key={idx} className='bg-white rounded-2xl p-4 mb-3 border border-gray-100'>
+                            <FTCard key={idx} className='mb-3'>
                                 {/* Exercise header with number badge */}
                                 <Pressable
                                     onPress={() => ex.exercise?._id && router.push({ pathname: '/exercise-detail', params: { id: ex.exercise._id } })}
@@ -236,7 +237,7 @@ export default function WorkoutRecord() {
                                         <Text className='text-sm font-bold text-gray-700'>{exerciseVolume.toLocaleString()} kg</Text>
                                     </View>
                                 )}
-                            </View>
+                            </FTCard>
                         )
                     })}
                 </View>
