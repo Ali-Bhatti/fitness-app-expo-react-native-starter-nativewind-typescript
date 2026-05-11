@@ -239,19 +239,13 @@ export default function ExerciseDetail() {
 
                     {/* AI Guidance */}
                     <Pressable
-                        className={`mt-6 rounded-2xl py-4 items-center active:opacity-80 ${aiGuidance ? 'bg-ft-green' : 'bg-primary'}`}
+                        className={`mt-6 rounded-2xl py-4 items-center active:opacity-80 ${aiLoading ? 'bg-gray-300' : aiGuidance ? 'bg-ft-green' : 'bg-primary'}`}
                         onPress={getAIGuidance}
+                        disabled={aiLoading}
                     >
-                        {aiLoading ? (
-                            <View className='flex-row items-center gap-2'>
-                                <ActivityIndicator size="small" color="#ffffff" />
-                                <Text className='text-white font-bold text-base'>Loading...</Text>
-                            </View>
-                        ) : (
-                            <Text className='text-white font-bold text-base'>
-                                {aiGuidance ? 'Re-Generate AI Guidance' : 'Get AI Guidance on Form & Technique'}
-                            </Text>
-                        )}
+                        <Text className='text-white font-bold text-base'>
+                            {aiGuidance ? 'Re-Generate AI Guidance' : 'Get AI Guidance on Form & Technique'}
+                        </Text>
                     </Pressable>
 
                     {/* Close */}

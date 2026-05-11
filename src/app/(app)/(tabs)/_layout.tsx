@@ -5,7 +5,7 @@ import { Image } from 'react-native'
 
 export default function Layout() {
     return (
-        <Tabs>
+        <Tabs screenOptions={{ tabBarActiveTintColor: '#0a7ea4' }}>
             <Tabs.Screen
                 name="index"
                 options={{

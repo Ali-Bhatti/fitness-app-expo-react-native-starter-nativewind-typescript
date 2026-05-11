@@ -38,6 +38,8 @@ export default function WorkoutRecord() {
     const [loading, setLoading] = useState(true)
     const [showDeleteAlert, setShowDeleteAlert] = useState(false)
     const [deleting, setDeleting] = useState(false)
+    const [showErrorAlert, setShowErrorAlert] = useState(false)
+    const [errorMessage, setErrorMessage] = useState('')
 
     useEffect(() => {
         if (!workoutId) return
@@ -49,7 +51,6 @@ export default function WorkoutRecord() {
     }, [workoutId])
 
     const handleDelete = async () => {
-        setShowDeleteAlert(false)
         setDeleting(true)
         try {
             const res = await fetch('/api/workout', {
@@ -58,11 +59,21 @@ export default function WorkoutRecord() {
                 body: JSON.stringify({ workoutId, userId }),
             })
             if (res.ok) {
-                router.back()
-                router.setParams({ refresh: Date.now().toString() })
+                setShowDeleteAlert(false)
+                router.replace({
+                    pathname: '/(app)/(tabs)/history',
+                    params: { refresh: 'true' },
+                })
+            } else {
+                const data = await res.json().catch(() => ({}))
+                setShowDeleteAlert(false)
+                setErrorMessage(data.error || 'Failed to delete workout. Please try again.')
+                setShowErrorAlert(true)
             }
         } catch (error) {
-            console.error('Failed to delete workout:', error)
+            setShowDeleteAlert(false)
+            setErrorMessage('Network error. Please check your connection and try again.')
+            setShowErrorAlert(true)
         } finally {
             setDeleting(false)
         }
@@ -153,7 +164,10 @@ export default function WorkoutRecord() {
                         return (
                             <View key={idx} className='bg-white rounded-2xl p-4 mb-3 border border-gray-100'>
                                 {/* Exercise header with number badge */}
-                                <View className='flex-row items-start justify-between mb-1'>
+                                <Pressable
+                                    onPress={() => ex.exercise?._id && router.push({ pathname: '/exercise-detail', params: { id: ex.exercise._id } })}
+                                    className='flex-row items-start justify-between mb-1 active:opacity-70'
+                                >
                                     <View className='flex-1'>
                                         <Text className='text-base font-bold text-gray-900'>
                                             {ex.exercise?.name ?? 'Unknown Exercise'}
@@ -162,10 +176,13 @@ export default function WorkoutRecord() {
                                             {setCount} set{setCount !== 1 ? 's' : ''} completed
                                         </Text>
                                     </View>
-                                    <View className='w-8 h-8 rounded-full bg-primary/10 items-center justify-center'>
-                                        <Text className='text-sm font-bold text-primary'>{idx + 1}</Text>
+                                    <View className='flex-row items-center gap-2'>
+                                        <View className='w-8 h-8 rounded-full bg-primary/10 items-center justify-center'>
+                                            <Text className='text-sm font-bold text-primary'>{idx + 1}</Text>
+                                        </View>
+                                        <AntDesign name='right' size={14} color='#9CA3AF' />
                                     </View>
-                                </View>
+                                </Pressable>
 
                                 {/* Target + equipment metadata */}
                                 {(ex.exercise?.target || ex.exercise?.equipment) && (
@@ -233,6 +250,7 @@ export default function WorkoutRecord() {
                 title='Delete Workout?'
                 message='This action cannot be undone. Your workout data will be permanently removed.'
                 onDismiss={() => setShowDeleteAlert(false)}
+                loading={deleting}
                 buttons={[
                     {
                         text: 'Delete',
@@ -243,6 +261,21 @@ export default function WorkoutRecord() {
                         text: 'Cancel',
                         style: 'cancel',
                         onPress: () => setShowDeleteAlert(false),
+                    },
+                ]}
+            />
+
+            <FTAlert
+                visible={showErrorAlert}
+                type='error'
+                title='Delete Failed'
+                message={errorMessage}
+                onDismiss={() => setShowErrorAlert(false)}
+                buttons={[
+                    {
+                        text: 'OK',
+                        style: 'default',
+                        onPress: () => setShowErrorAlert(false),
                     },
                 ]}
             />

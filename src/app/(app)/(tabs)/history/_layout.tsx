@@ -12,9 +12,9 @@ export default function Layout() {
                     headerShown: true,
                     headerTitle: 'Workout Details',
                     headerBackTitle: 'History',
+                    headerTintColor: '#0a7ea4',
                     headerStyle: {
                         backgroundColor: '#f8f8f8',
-
                     },
                     headerTitleStyle: {
                         fontSize: 30, // text-3xl

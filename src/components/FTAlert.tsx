@@ -1,6 +1,6 @@
 import AntDesign from '@expo/vector-icons/AntDesign'
 import React, { useEffect, useRef } from 'react'
-import { Animated, Modal, Pressable, Text, View } from 'react-native'
+import { ActivityIndicator, Animated, Modal, Pressable, Text, View } from 'react-native'
 
 export type AlertType = 'confirm' | 'success' | 'error' | 'warning'
 
@@ -17,6 +17,7 @@ type FTAlertProps = {
     message?: string
     buttons?: AlertButton[]
     onDismiss?: () => void
+    loading?: boolean
 }
 
 const ICON_CONFIG: Record<AlertType, { name: React.ComponentProps<typeof AntDesign>['name']; color: string; bg: string }> = {
@@ -38,7 +39,7 @@ const BUTTON_TEXT_STYLES = {
     destructive: 'text-white',
 }
 
-export default function FTAlert({ visible, type = 'confirm', title, message, buttons, onDismiss }: FTAlertProps) {
+export default function FTAlert({ visible, type = 'confirm', title, message, buttons, onDismiss, loading = false }: FTAlertProps) {
     const fadeAnim = useRef(new Animated.Value(0)).current
     const scaleAnim = useRef(new Animated.Value(0.9)).current
 
@@ -55,20 +56,20 @@ export default function FTAlert({ visible, type = 'confirm', title, message, but
     }, [visible])
 
     const handlePress = (button: AlertButton) => {
+        if (loading) return
         button.onPress?.()
-        onDismiss?.()
     }
 
     const icon = ICON_CONFIG[type]
     const resolvedButtons = buttons ?? [{ text: 'OK', style: 'default' as const }]
 
     return (
-        <Modal visible={visible} transparent animationType='none' statusBarTranslucent onRequestClose={onDismiss}>
+        <Modal visible={visible} transparent animationType='none' statusBarTranslucent onRequestClose={loading ? undefined : onDismiss}>
             <Animated.View
                 style={{ opacity: fadeAnim }}
                 className='flex-1 bg-black/50 items-center justify-center px-8'
             >
-                <Pressable className='absolute inset-0' onPress={onDismiss} />
+                <Pressable className='absolute inset-0' onPress={loading ? undefined : onDismiss} />
 
                 <Animated.View
                     style={{ transform: [{ scale: scaleAnim }] }}
@@ -89,15 +90,27 @@ export default function FTAlert({ visible, type = 'confirm', title, message, but
                     <View className='px-6 pb-6 pt-2 gap-2.5'>
                         {resolvedButtons.map((btn, idx) => {
                             const btnStyle = btn.style ?? 'default'
+                            const isActionButton = btnStyle !== 'cancel'
+                            const showSpinner = loading && isActionButton
                             return (
                                 <Pressable
                                     key={idx}
                                     onPress={() => handlePress(btn)}
-                                    className={`${BUTTON_STYLES[btnStyle]} rounded-xl py-3.5 items-center active:opacity-80`}
+                                    disabled={loading}
+                                    className={`${BUTTON_STYLES[btnStyle]} rounded-xl py-3.5 items-center active:opacity-80 ${loading ? 'opacity-60' : ''}`}
                                 >
-                                    <Text className={`${BUTTON_TEXT_STYLES[btnStyle]} font-semibold text-base`}>
-                                        {btn.text}
-                                    </Text>
+                                    {showSpinner ? (
+                                        <View className='flex-row items-center gap-2'>
+                                            <ActivityIndicator size='small' color='#ffffff' />
+                                            <Text className={`${BUTTON_TEXT_STYLES[btnStyle]} font-semibold text-base`}>
+                                                {btn.text}...
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <Text className={`${BUTTON_TEXT_STYLES[btnStyle]} font-semibold text-base`}>
+                                            {btn.text}
+                                        </Text>
+                                    )}
                                 </Pressable>
                             )
                         })}
