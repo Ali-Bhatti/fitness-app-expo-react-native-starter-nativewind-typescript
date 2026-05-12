@@ -55,42 +55,33 @@ export default function WorkoutCard({ workout, onPress, maxExercises }: Props) {
                 {/* Stats row */}
                 <View className='flex-row gap-4 mb-3 pl-1'>
                     <View className='flex-row items-center gap-1'>
-                        <AntDesign name='appstore-o' size={12} color='#6B7280' />
+                        <AntDesign name='bars' size={12} color='#6B7280' />
                         <Text className='text-xs text-gray-500'>
                             {totalExercises} exercise{totalExercises !== 1 ? 's' : ''}
                         </Text>
                     </View>
                     <View className='flex-row items-center gap-1'>
-                        <AntDesign name='sync' size={12} color='#6B7280' />
+                        <AntDesign name='database' size={12} color='#6B7280' />
                         <Text className='text-xs text-gray-500'>
                             {totalSets} set{totalSets !== 1 ? 's' : ''}
                         </Text>
                     </View>
                 </View>
 
-                {/* Exercise list */}
+                {/* Exercise list — names only */}
                 {(maxExercises ? workout.exercises?.slice(0, maxExercises) : workout.exercises)?.map((ex, idx) => (
                     <View
                         key={idx}
-                        className={`flex-row items-center justify-between py-2.5 ${idx > 0 ? 'border-t border-gray-100' : ''}`}
+                        className={`flex-row items-center py-2 ${idx > 0 ? 'border-t border-gray-100' : ''}`}
                     >
-                        <View className='flex-1'>
-                            <Text className='text-sm font-medium text-gray-800' numberOfLines={1}>
-                                {ex.exercise?.name ?? 'Unknown Exercise'}
-                            </Text>
-                            {ex.exercise?.target && (
-                                <Text className='text-xs text-gray-400 capitalize'>
-                                    {ex.exercise.target}
-                                </Text>
-                            )}
-                        </View>
-                        <Text className='text-xs text-gray-500 ml-2'>
-                            {ex.sets?.map((s) => {
-                                const parts = [`${s.reps ?? 0}`]
-                                if (s.weight) parts.push(`${s.weight}${s.weightUnit ?? 'kg'}`)
-                                return parts.join(' × ')
-                            }).join(', ')}
+                        <Text className='text-sm font-medium text-gray-800 flex-1' numberOfLines={1}>
+                            {ex.exercise?.name ?? 'Unknown Exercise'}
                         </Text>
+                        {ex.exercise?.target && (
+                            <Text className='text-xs text-gray-400 capitalize ml-2'>
+                                {ex.exercise.target}
+                            </Text>
+                        )}
                     </View>
                 ))}
                 {maxExercises && workout.exercises && workout.exercises.length > maxExercises && (

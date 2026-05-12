@@ -1,6 +1,6 @@
 import FTAlert from '@/components/FTAlert'
 import FTCard from '@/components/FTCard'
-import { formatDuration, formatRelativeDate } from '@/lib/utils'
+import { formatDuration, formatRelativeDate, toKg, formatVolume } from '@/lib/utils'
 import { sanityClient } from '@/lib/sanity/client'
 import { GET_WORKOUT_DETAIL_QUERY_RESULT } from '@/lib/sanity/types'
 import { useAuth } from '@clerk/expo'
@@ -103,12 +103,17 @@ export default function WorkoutRecord() {
     const totalSets = workout.exercises?.reduce((sum, ex) => sum + (ex.sets?.length ?? 0), 0) ?? 0
     const totalExercises = workout.exercises?.length ?? 0
     const totalVolume = workout.exercises?.reduce(
-        (sum, ex) => sum + (ex.sets?.reduce((s, set) => s + ((set.reps ?? 0) * (set.weight ?? 0)), 0) ?? 0), 0
+        (sum, ex) => sum + (ex.sets?.reduce((s, set) => s + toKg((set.reps ?? 0) * (set.weight ?? 0), set.weightUnit), 0) ?? 0), 0
     ) ?? 0
 
     const getExerciseVolume = (sets: typeof workout.exercises extends (infer T)[] | null ? T extends { sets: infer S } ? S : never : never) => {
         if (!sets) return 0
         return sets.reduce((sum, set) => sum + ((set.reps ?? 0) * (set.weight ?? 0)), 0)
+    }
+
+    const getExerciseUnit = (sets: typeof workout.exercises extends (infer T)[] | null ? T extends { sets: infer S } ? S : never : never): string => {
+        if (!sets || sets.length === 0) return 'kg'
+        return sets[0].weightUnit ?? 'kg'
     }
 
     return (
@@ -150,7 +155,7 @@ export default function WorkoutRecord() {
                         {totalVolume > 0 && (
                             <View className='flex-row items-center gap-3'>
                                 <AntDesign name='swap' size={16} color='#6B7280' />
-                                <Text className='text-sm text-gray-700'>{totalVolume.toLocaleString()} kg total volume</Text>
+                                <Text className='text-sm text-gray-700'>{formatVolume(totalVolume, 'kg')} total volume</Text>
                             </View>
                         )}
                     </View>
@@ -160,6 +165,7 @@ export default function WorkoutRecord() {
                 <View className='mx-4 mt-5'>
                     {workout.exercises?.map((ex, idx) => {
                         const exerciseVolume = getExerciseVolume(ex.sets)
+                        const exerciseUnit = getExerciseUnit(ex.sets)
                         const setCount = ex.sets?.length ?? 0
 
                         return (
@@ -234,7 +240,7 @@ export default function WorkoutRecord() {
                                 {exerciseVolume > 0 && (
                                     <View className='flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100'>
                                         <Text className='text-xs text-gray-500'>Exercise Volume:</Text>
-                                        <Text className='text-sm font-bold text-gray-700'>{exerciseVolume.toLocaleString()} kg</Text>
+                                        <Text className='text-sm font-bold text-gray-700'>{formatVolume(exerciseVolume, exerciseUnit)}</Text>
                                     </View>
                                 )}
                             </FTCard>

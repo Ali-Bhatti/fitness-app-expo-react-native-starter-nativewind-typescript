@@ -76,7 +76,7 @@ export default function HistoryPage() {
         <SafeAreaView className='flex-1 bg-gray-50' edges={['top']}>
             <TabHeader
                 title='Workout History'
-                subtitle={workouts.length > 0 ? `${workouts.length} workout${workouts.length !== 1 ? 's' : ''} completed` : undefined}
+                subtitle={`${workouts.length} workout${workouts.length !== 1 ? 's' : ''} completed`}
             />
 
             <FlatList
@@ -95,7 +95,7 @@ export default function HistoryPage() {
                     <RefreshControl refreshing={refreshing} onRefresh={() => fetchWorkouts(true)} tintColor='#0a7ea4' title='Pull to refresh workouts' />
                 }
                 ListEmptyComponent={
-                    <FTCard className='mx-4 mt-8 items-center py-8'>
+                    <FTCard className='mx-4 items-center py-8'>
                         <View className='w-16 h-16 rounded-full bg-gray-200 items-center justify-center mb-4'>
                             <AntDesign name='clockcircleo' size={28} color='#9CA3AF' />
                         </View>
