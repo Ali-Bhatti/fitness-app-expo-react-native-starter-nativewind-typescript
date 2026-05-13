@@ -11,6 +11,7 @@ module.exports = {
         'ft-gray': '#f3f4f6',
         'ft-green': '#22C55E',
         'ft-orange': '#F97316',
+        'ft-red': '#EF4444',
       },
     },
   },

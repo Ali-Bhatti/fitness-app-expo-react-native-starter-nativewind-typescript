@@ -217,6 +217,15 @@ export type AllSanitySchemaTypes =
   | Geopoint
   | Slug;
 
+// Source: ../src/app/(app)/(tabs)/active-workout.tsx
+// Variable: PICKER_QUERY
+// Query: *[_type == "exercise" && isActive == true    && ($search == "" || name match $search + "*")] | order(name asc) [0...60] {    _id, name, target}
+export type PICKER_QUERY_RESULT = Array<{
+  _id: string;
+  name: string | null;
+  target: string | null;
+}>;
+
 // Source: ../src/app/(app)/(tabs)/exercises.tsx
 // Variable: EXERCISES_QUERY
 // Query: *[_type == "exercise" && isActive == true    && ($search == "" || name match $search + "*" || description match $search + "*")] | order(name asc) {    _id,    name,    description,    difficulty,    target,    "imageUrl": image.asset->url}

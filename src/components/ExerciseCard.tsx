@@ -18,9 +18,10 @@ export type ExerciseItem = {
 type Props = {
     item: Exercise
     onPress: () => void
+    selectionMode?: boolean
 }
 
-export default function ExerciseCard({ item, onPress }: Props) {
+export default function ExerciseCard({ item, onPress, selectionMode }: Props) {
     return (
         <Pressable
             onPress={onPress}
@@ -72,8 +73,13 @@ export default function ExerciseCard({ item, onPress }: Props) {
                     ) : null}
                 </View>
 
-                {/* Chevron */}
-                <AntDesign name='right' size={14} color='#9CA3AF' />
+                {/* Chevron or plus icon depending on mode */}
+                {selectionMode
+                    ? <View className='w-7 h-7 rounded-full bg-primary/10 items-center justify-center'>
+                        <AntDesign name='plus' size={14} color='#0a7ea4' />
+                    </View>
+                    : <AntDesign name='right' size={14} color='#9CA3AF' />
+                }
             </FTCard>
         </Pressable>
     )

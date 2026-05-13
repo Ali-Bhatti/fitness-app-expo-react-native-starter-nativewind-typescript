@@ -88,6 +88,7 @@ function FilterBar({
 
 export default function Exercises() {
     const router = useRouter()
+
     const [allExercises, setAllExercises] = useState<Exercise[]>([])
     const [exercises, setExercises] = useState<Exercise[]>([])
     const [loading, setLoading] = useState(true)
@@ -143,7 +144,10 @@ export default function Exercises() {
 
     return (
         <SafeAreaView className='flex-1 bg-gray-50' edges={['top']}>
-            <TabHeader title='Exercise Library' subtitle='Discover and master new exercises' />
+            <TabHeader
+                title='Exercise Library'
+                subtitle='Discover and master new exercises'
+            />
 
             {/* Search */}
             <SearchBar value={search} onChange={setSearch} />
