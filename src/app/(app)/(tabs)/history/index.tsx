@@ -92,7 +92,7 @@ export default function HistoryPage() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 32, paddingTop: 4 }}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={() => fetchWorkouts(true)} tintColor='#0a7ea4' title='Pull to refresh workouts' />
+                    <RefreshControl refreshing={refreshing} onRefresh={() => fetchWorkouts(true)} tintColor='#0a7ea4' colors={['#0a7ea4']} title='Pull to refresh workouts' />
                 }
                 ListEmptyComponent={
                     <FTCard className='mx-4 items-center py-8'>

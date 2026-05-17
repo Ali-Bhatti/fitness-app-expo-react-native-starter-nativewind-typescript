@@ -217,15 +217,6 @@ export type AllSanitySchemaTypes =
   | Geopoint
   | Slug;
 
-// Source: ../src/app/(app)/(tabs)/active-workout.tsx
-// Variable: PICKER_QUERY
-// Query: *[_type == "exercise" && isActive == true    && ($search == "" || name match $search + "*")] | order(name asc) [0...60] {    _id, name, target}
-export type PICKER_QUERY_RESULT = Array<{
-  _id: string;
-  name: string | null;
-  target: string | null;
-}>;
-
 // Source: ../src/app/(app)/(tabs)/exercises.tsx
 // Variable: EXERCISES_QUERY
 // Query: *[_type == "exercise" && isActive == true    && ($search == "" || name match $search + "*" || description match $search + "*")] | order(name asc) {    _id,    name,    description,    difficulty,    target,    "imageUrl": image.asset->url}
@@ -300,6 +291,14 @@ export type GET_WORKOUT_DETAIL_QUERY_RESULT = {
     }> | null;
   }> | null;
 } | null;
+
+// Source: ../src/app/(app)/(tabs)/profile/index.tsx
+// Variable: PROFILE_WORKOUTS_QUERY
+// Query: *[_type == "workout" && userId == $userId] {  date,  duration}
+export type PROFILE_WORKOUTS_QUERY_RESULT = Array<{
+  date: string | null;
+  duration: number | null;
+}>;
 
 // Source: ../src/app/(app)/exercise-detail.tsx
 // Variable: EXERCISE_DETAIL_QUERY
