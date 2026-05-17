@@ -26,7 +26,10 @@ export default function Workout() {
                 </Text>
 
                 <Pressable
-                    onPress={() => router.push('/(tabs)/active-workout')}
+                    onPress={() => router.push({
+                        pathname: '/(tabs)/active-workout',
+                        params: { session: Date.now().toString() },
+                    } as never)}
                     className='bg-primary w-full rounded-2xl py-4 items-center active:opacity-80'
                     style={{
                         shadowColor: '#0a7ea4',

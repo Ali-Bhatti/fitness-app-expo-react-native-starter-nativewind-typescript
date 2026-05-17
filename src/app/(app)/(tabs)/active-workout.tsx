@@ -5,8 +5,8 @@ import { formatDuration } from '@/lib/utils'
 import { useWorkoutStore } from '../../../../store/workout-store'
 import { useAuth } from '@clerk/expo'
 import AntDesign from '@expo/vector-icons/AntDesign'
-import { useFocusEffect, useRouter } from 'expo-router'
-import React, { useCallback, useState } from 'react'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
+import React, { useCallback, useRef, useState } from 'react'
 import { useStopwatch } from 'react-timer-hook'
 import {
     ActivityIndicator,
@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 export default function ActiveWorkout() {
     const router = useRouter()
     const { userId } = useAuth()
+    const { session } = useLocalSearchParams<{ session?: string }>()
 
     // Timer
     const { totalSeconds, start, pause, reset } = useStopwatch({ autoStart: false })
@@ -53,11 +54,18 @@ export default function ActiveWorkout() {
     const [errorMessage, setErrorMessage] = useState('')
     const [isSaving, setIsSaving] = useState(false)
 
-    // Reset workout data and start timer fresh on every focus
+    // Track the last session param we handled.
+    // - New param value  → fresh workout start  → reset timer + exercises.
+    // - Same param value → returning from exercise-detail modal → do nothing.
+    const lastSession = useRef<string | null>(null)
+
     useFocusEffect(
         useCallback(() => {
-            reset(undefined, true)
-            resetWorkout()
+            if (session && session !== lastSession.current) {
+                lastSession.current = session
+                reset(undefined, true)   // reset timer and auto-start
+                resetWorkout()
+            }
             setShowPicker(false)
             setShowDiscardAlert(false)
             setShowFinishAlert(false)
@@ -66,12 +74,9 @@ export default function ActiveWorkout() {
             setIsSaving(false)
 
             return () => pause()
-        }, [])
+        }, [session])
     )
 
-    const hasValidData = workoutExercises.some(ex =>
-        ex.sets.some(s => parseInt(s.reps) > 0)
-    )
 
     const handleFinish = async () => {
         setIsSaving(true)
@@ -140,8 +145,8 @@ export default function ActiveWorkout() {
 
                     <Pressable
                         onPress={() => {
+                            pause()
                             if (workoutExercises.length > 0) {
-                                pause()
                                 setShowFinishAlert(true)
                             } else {
                                 setShowDiscardAlert(true)
@@ -187,10 +192,15 @@ export default function ActiveWorkout() {
                         <FTCard key={ex.id} className='mb-3'>
                             {/* Exercise header */}
                             <View className='flex-row items-start justify-between mb-3'>
-                                <View className='flex-1 mr-3'>
-                                    <Text className='text-base font-bold text-gray-900' numberOfLines={1}>{ex.name}</Text>
-                                    {ex.target && <Text className='text-xs text-gray-400 capitalize mt-0.5'>{ex.target}</Text>}
-                                </View>
+                                <Pressable
+                                    onPress={() => router.push({ pathname: '/exercise-detail', params: { id: ex.sanityId } } as never)}
+                                    className='flex-1 mr-3 active:opacity-80'
+                                >
+                                    <View className='flex-1 mr-3'>
+                                        <Text className='text-base font-bold text-gray-900' numberOfLines={1}>{ex.name}</Text>
+                                        {ex.target && <Text className='text-xs text-gray-400 capitalize mt-0.5'>{ex.target}</Text>}
+                                    </View>
+                                </Pressable>
                                 <Pressable onPress={() => removeExercise(ex.id)} className='p-1 rounded-full bg-red-50 items-center justify-center active:bg-red-100'>
                                     <AntDesign name='delete' size={15} color='#EF4444' />
                                 </Pressable>
@@ -201,21 +211,16 @@ export default function ActiveWorkout() {
                                 <Text className='w-8 text-xs font-semibold text-gray-400'>SET</Text>
                                 <Text className='flex-1 text-xs font-semibold text-gray-400 text-center'>REPS</Text>
                                 <Text className='flex-1 text-xs font-semibold text-gray-400 text-center'>{weightUnit.toUpperCase()}</Text>
-                                <View className='w-7' />
+                                <View className='w-16' />
                             </View>
 
                             {/* Set rows */}
                             {ex.sets.map((set, setIdx) => (
                                 <View key={set.id} className='flex-row items-center mb-2'>
-                                    <Pressable
-                                        onPress={() => toggleSetCompleted(ex.id, set.id)}
-                                        className={`w-8 h-7 rounded-full items-center justify-center ${set.isCompleted ? 'bg-ft-green' : 'bg-primary/10'}`}
-                                    >
-                                        {set.isCompleted
-                                            ? <AntDesign name='check' size={12} color='#fff' />
-                                            : <Text className='text-xs font-bold text-primary'>{setIdx + 1}</Text>
-                                        }
-                                    </Pressable>
+                                    {/* Static set number */}
+                                    <View className='w-8 items-center'>
+                                        <Text className='text-xs font-bold text-gray-400'>{setIdx + 1}</Text>
+                                    </View>
                                     <TextInput
                                         value={set.reps}
                                         onChangeText={v => updateSet(ex.id, set.id, 'reps', v.replace(/[^0-9]/g, ''))}
@@ -232,6 +237,18 @@ export default function ActiveWorkout() {
                                         keyboardType='decimal-pad'
                                         style={{ flex: 1, backgroundColor: set.isCompleted ? '#F0FDF4' : '#F9FAFB', borderRadius: 10, textAlign: 'center', paddingVertical: 8, fontSize: 14, fontWeight: '500', color: '#1F2937', marginHorizontal: 4, borderWidth: 1, borderColor: set.isCompleted ? '#BBF7D0' : '#F3F4F6' }}
                                     />
+                                    {/* Complete toggle */}
+                                    <Pressable
+                                        onPress={() => toggleSetCompleted(ex.id, set.id)}
+                                        className='w-7 h-7 items-center justify-center mr-1 active:opacity-70'
+                                    >
+                                        <AntDesign
+                                            name={set.isCompleted ? 'checkcircle' : 'checkcircleo'}
+                                            size={20}
+                                            color={set.isCompleted ? '#22C55E' : '#D1D5DB'}
+                                        />
+                                    </Pressable>
+                                    {/* Delete set */}
                                     <Pressable
                                         onPress={() => ex.sets.length > 1 ? removeSet(ex.id, set.id) : undefined}
                                         className='w-7 items-center justify-center active:opacity-60'

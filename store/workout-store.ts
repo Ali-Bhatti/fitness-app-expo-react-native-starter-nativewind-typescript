@@ -8,7 +8,7 @@ export type WeightUnit = 'kg' | 'lbs'
 
 export type WorkoutSet = {
     id: string
-    /** Name of the exercise performed in this set (denormalised for display) */
+    /** Name of the exercise performed in this set (denormalized for display) */
     name: string
     reps: string
     weight: string
