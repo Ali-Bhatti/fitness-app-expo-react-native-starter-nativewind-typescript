@@ -1,5 +1,6 @@
 import FTAlert from '@/components/FTAlert'
 import FTCard from '@/components/FTCard'
+import FTMenu from '@/components/FTMenu'
 import ExerciseSelectionModal from '@/components/ExerciseSelectionModal'
 import { formatDuration } from '@/lib/utils'
 import { useWorkoutStore } from '../../../../store/workout-store'
@@ -44,6 +45,12 @@ export default function ActiveWorkout() {
         resetWorkout,
     } = useWorkoutStore()
 
+    // Derived
+    const hasExercises = workoutExercises.length > 0
+    const allSetsComplete = hasExercises && workoutExercises.every(
+        ex => ex.sets.length > 0 && ex.sets.every(s => s.isCompleted)
+    )
+
     // Picker
     const [showPicker, setShowPicker] = useState(false)
 
@@ -62,9 +69,13 @@ export default function ActiveWorkout() {
     useFocusEffect(
         useCallback(() => {
             if (session && session !== lastSession.current) {
+                // New session → fresh start
                 lastSession.current = session
-                reset(undefined, true)   // reset timer and auto-start
+                reset(undefined, true)
                 resetWorkout()
+            } else if (lastSession.current) {
+                // Returning from a child screen (e.g. exercise-detail) → resume
+                start()
             }
             setShowPicker(false)
             setShowDiscardAlert(false)
@@ -128,9 +139,9 @@ export default function ActiveWorkout() {
                     <Text className='text-sm font-semibold text-primary mt-0.5'>{formatDuration(totalSeconds)}</Text>
                 </View>
 
-                {/* Right: unit toggle + end button */}
+                {/* Right: unit toggle + actions */}
                 <View className='flex-row items-center gap-2'>
-                    {/* Global lbs / kg toggle */}
+                    {/* lbs / kg toggle */}
                     <View className='flex-row bg-gray-100 rounded-lg overflow-hidden'>
                         {(['lbs', 'kg'] as const).map(unit => (
                             <Pressable
@@ -143,23 +154,38 @@ export default function ActiveWorkout() {
                         ))}
                     </View>
 
-                    <Pressable
-                        onPress={() => {
-                            pause()
-                            if (workoutExercises.length > 0) {
-                                setShowFinishAlert(true)
-                            } else {
-                                setShowDiscardAlert(true)
-                            }
-                        }}
-                        disabled={isSaving}
-                        className='bg-ft-red rounded-xl px-4 py-2 active:opacity-80'
-                    >
-                        {isSaving
-                            ? <ActivityIndicator size='small' color='#fff' />
-                            : <Text className='font-bold text-sm text-white'>{workoutExercises.length > 0 ? 'Complete Workout' : 'End Workout'}</Text>
-                        }
-                    </Pressable>
+                    {!hasExercises ? (
+                        /* No exercises — cancel with no confirmation */
+                        <Pressable onPress={() => router.back()} className='px-4 py-2 rounded-xl active:opacity-70 bg-ft-gray'>
+                            <Text className='font-semibold text-sm text-gray-500'>Cancel</Text>
+                        </Pressable>
+                    ) : (
+                        <>
+                            {/* Finish Workout — green when all sets done */}
+                            <Pressable
+                                onPress={() => { pause(); setShowFinishAlert(true) }}
+                                disabled={isSaving}
+                                className={`rounded-xl px-4 py-2 active:opacity-80 ${allSetsComplete ? 'bg-ft-green' : 'bg-primary'}`}
+                            >
+                                {isSaving
+                                    ? <ActivityIndicator size='small' color='#fff' />
+                                    : <Text className='font-bold text-sm text-white'>Finish Workout</Text>
+                                }
+                            </Pressable>
+
+                            {/* ⋮ overflow — Start Over */}
+                            <FTMenu
+                                items={[
+                                    {
+                                        label: 'Start Over',
+                                        icon: 'reload1',
+                                        style: 'destructive',
+                                        onPress: () => { pause(); setShowDiscardAlert(true) },
+                                    },
+                                ]}
+                            />
+                        </>
+                    )}
                 </View>
             </View>
 
@@ -191,7 +217,7 @@ export default function ActiveWorkout() {
                     {workoutExercises.map((ex) => (
                         <FTCard key={ex.id} className='mb-3'>
                             {/* Exercise header */}
-                            <View className='flex-row items-start justify-between mb-3'>
+                            <View className='flex-row items-start justify-between mb-1'>
                                 <Pressable
                                     onPress={() => router.push({ pathname: '/exercise-detail', params: { id: ex.sanityId } } as never)}
                                     className='flex-1 mr-3 active:opacity-80'
@@ -205,6 +231,22 @@ export default function ActiveWorkout() {
                                     <AntDesign name='delete' size={15} color='#EF4444' />
                                 </Pressable>
                             </View>
+
+                            {/* Sets progress summary — outside pressable */}
+                            {(() => {
+                                const completedCount = ex.sets.filter(s => s.isCompleted).length
+                                return (
+                                    <View className='flex-row items-center gap-1.5 mb-3'>
+                                        <Text className='text-xs text-gray-400'>
+                                            {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
+                                        </Text>
+                                        <Text className='text-xs text-gray-300'>·</Text>
+                                        <Text className={`text-xs font-semibold ${completedCount > 0 ? 'text-ft-green' : 'text-gray-400'}`}>
+                                            {completedCount} completed
+                                        </Text>
+                                    </View>
+                                )
+                            })()}
 
                             {/* Column headers */}
                             <View className='flex-row items-center mb-2 px-1'>
@@ -291,18 +333,23 @@ export default function ActiveWorkout() {
             <FTAlert
                 visible={showDiscardAlert}
                 type='warning'
-                title='Discard Workout?'
-                message='All progress will be lost. This cannot be undone.'
-                onDismiss={() => setShowDiscardAlert(false)}
+                title='Start Over?'
+                message='All exercises and sets in this session will be removed.'
+                onDismiss={() => { start(); setShowDiscardAlert(false) }}
                 buttons={[
                     {
-                        text: 'Discard', style: 'destructive', onPress: () => {
+                        text: 'Start Over', style: 'destructive', onPress: () => {
                             setShowDiscardAlert(false)
-                            // Let modal close animation finish before navigating
-                            setTimeout(() => router.back(), 150)
+                            resetWorkout()
+                            reset(undefined, true)
                         }
                     },
-                    { text: 'Keep Going', style: 'cancel', onPress: () => setShowDiscardAlert(false) },
+                    {
+                        text: 'Keep Going', style: 'cancel', onPress: () => {
+                            start()
+                            setShowDiscardAlert(false)
+                        }
+                    },
                 ]}
             />
 
@@ -312,10 +359,7 @@ export default function ActiveWorkout() {
                 title='Finish Workout?'
                 message={`${formatDuration(totalSeconds)} · ${workoutExercises.length} exercise${workoutExercises.length !== 1 ? 's' : ''}. Save and complete?`}
                 onDismiss={() => {
-                    if (!isSaving) {
-                        start()  // resume timer
-                        setShowFinishAlert(false)
-                    }
+                    if (!isSaving) { start(); setShowFinishAlert(false) }
                 }}
                 loading={isSaving}
                 buttons={[
