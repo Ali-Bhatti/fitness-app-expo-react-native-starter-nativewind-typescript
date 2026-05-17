@@ -44,36 +44,48 @@ function getAvgDuration(workouts: WorkoutSummary[]): number {
     return valid.reduce((s, w) => s + (w.duration ?? 0), 0) / valid.length
 }
 
+function getThisWeekDuration(workouts: WorkoutSummary[]): number {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 7)
+    cutoff.setHours(0, 0, 0, 0)
+    return workouts
+        .filter((w) => w.date && new Date(w.date) >= cutoff)
+        .reduce((s, w) => s + (w.duration ?? 0), 0)
+}
+
 type Props = {
     userId: string
     refreshKey?: number
+    variant?: 'full' | 'compact'
 }
 
-function StatTile({
-    value,
-    label,
-    icon,
-}: {
-    value: string
-    label: string
-    icon: React.ComponentProps<typeof AntDesign>['name']
-}) {
+function StatTile({ value, label, icon }: { value: string; label: string; icon: React.ComponentProps<typeof AntDesign>['name'] }) {
     return (
         <View className='flex-1 bg-gray-50 rounded-2xl p-4'>
             <View className='flex-row items-center gap-2 mb-2'>
                 <View className='w-7 h-7 rounded-lg bg-primary/10 items-center justify-center'>
                     <AntDesign name={icon} size={14} color='#0a7ea4' />
                 </View>
-                <Text className='text-xs text-gray-500 font-medium flex-1' numberOfLines={1}>
-                    {label}
-                </Text>
+                <Text className='text-xs text-gray-500 font-medium flex-1' numberOfLines={1}>{label}</Text>
             </View>
             <Text className='text-2xl font-bold text-primary'>{value}</Text>
         </View>
     )
 }
 
-export default function ProfileFitnessStats({ userId, refreshKey = 0 }: Props) {
+function CompactStatTile({ value, label, icon }: { value: string; label: string; icon: React.ComponentProps<typeof AntDesign>['name'] }) {
+    return (
+        <View className='flex-1 items-center gap-1.5'>
+            <View className='w-8 h-8 rounded-xl bg-primary/10 items-center justify-center'>
+                <AntDesign name={icon} size={15} color='#0a7ea4' />
+            </View>
+            <Text className='text-xl font-bold text-primary'>{value}</Text>
+            <Text className='text-xs text-gray-500 text-center' numberOfLines={1}>{label}</Text>
+        </View>
+    )
+}
+
+export default function ProfileFitnessStats({ userId, refreshKey = 0, variant = 'full' }: Props) {
     const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -92,11 +104,30 @@ export default function ProfileFitnessStats({ userId, refreshKey = 0 }: Props) {
     const daysActive = getDaysActive(workouts)
     const streak = getCurrentStreak(workouts)
     const avgDuration = getAvgDuration(workouts)
+    const thisWeekDuration = getThisWeekDuration(workouts)
 
     if (loading) {
         return (
             <FTCard className='items-center justify-center py-8'>
                 <ActivityIndicator size='small' color='#0a7ea4' />
+            </FTCard>
+        )
+    }
+
+    if (variant === 'compact') {
+        return (
+            <FTCard>
+                <View className='flex-row items-center justify-around'>
+                    <CompactStatTile value={String(streak)} label='Day Streak' icon='star' />
+                    <View className='w-px h-10 bg-gray-100' />
+                    <CompactStatTile value={String(totalWorkouts)} label='Workouts' icon='Trophy' />
+                    <View className='w-px h-10 bg-gray-100' />
+                    <CompactStatTile
+                        value={thisWeekDuration > 0 ? formatDuration(thisWeekDuration) : '—'}
+                        label='This Week'
+                        icon='clockcircleo'
+                    />
+                </View>
             </FTCard>
         )
     }

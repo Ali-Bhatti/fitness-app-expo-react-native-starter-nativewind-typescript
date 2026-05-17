@@ -1,6 +1,40 @@
+import { sanityClient } from '@/lib/sanity/client'
+import { PROFILE_WORKOUTS_QUERY_RESULT } from '@/lib/sanity/types'
 import AntDesign from '@expo/vector-icons/AntDesign'
-import React from 'react'
+import groq from 'groq'
+import React, { useEffect, useState } from 'react'
 import { ScrollView, Text, View } from 'react-native'
+
+const ACHIEVEMENTS_WORKOUTS_QUERY = groq`*[_type == "workout" && userId == $userId] {
+  date,
+  duration
+}`
+
+type WorkoutSummary = PROFILE_WORKOUTS_QUERY_RESULT[number]
+
+function getDaysActive(workouts: WorkoutSummary[]): number {
+    const unique = new Set(workouts.map((w) => w.date?.split('T')[0]).filter(Boolean))
+    return unique.size
+}
+
+function getCurrentStreak(workouts: WorkoutSummary[]): number {
+    if (!workouts.length) return 0
+    const uniqueDays = Array.from(
+        new Set(workouts.map((w) => w.date?.split('T')[0]).filter((d): d is string => Boolean(d)))
+    ).sort((a, b) => b.localeCompare(a))
+
+    let streak = 0
+    let checkDate = new Date()
+    checkDate.setHours(0, 0, 0, 0)
+
+    for (const day of uniqueDays) {
+        const d = new Date(day)
+        d.setHours(0, 0, 0, 0)
+        const diff = Math.round((checkDate.getTime() - d.getTime()) / 86400000)
+        if (diff <= 1) { streak++; checkDate = d } else break
+    }
+    return streak
+}
 
 type Achievement = {
     label: string
@@ -12,9 +46,8 @@ type Achievement = {
 }
 
 type Props = {
-    totalWorkouts: number
-    streak: number
-    daysActive: number
+    userId: string
+    refreshKey?: number
 }
 
 function AchievementBadge({ label, icon, color, bg, unlocked, subtitle }: Achievement) {
@@ -43,7 +76,22 @@ function AchievementBadge({ label, icon, color, bg, unlocked, subtitle }: Achiev
     )
 }
 
-export default function ProfileAchievements({ totalWorkouts, streak, daysActive }: Props) {
+export default function ProfileAchievements({ userId, refreshKey = 0 }: Props) {
+    const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
+
+    useEffect(() => {
+        let cancelled = false
+        sanityClient
+            .fetch<PROFILE_WORKOUTS_QUERY_RESULT>(ACHIEVEMENTS_WORKOUTS_QUERY, { userId })
+            .then((data) => { if (!cancelled) setWorkouts(data) })
+            .catch((err) => console.error('Error fetching achievements data:', err))
+        return () => { cancelled = true }
+    }, [userId, refreshKey])
+
+    const totalWorkouts = workouts.length
+    const streak = getCurrentStreak(workouts)
+    const daysActive = getDaysActive(workouts)
+
     const achievements: Achievement[] = [
         { label: 'First Step', icon: 'rocket1', color: '#8B5CF6', bg: '#EDE9FE', unlocked: totalWorkouts >= 1, subtitle: '1 workout' },
         { label: '5 Workouts', icon: 'like2', color: '#F97316', bg: '#FFF7ED', unlocked: totalWorkouts >= 5, subtitle: '5 workouts' },

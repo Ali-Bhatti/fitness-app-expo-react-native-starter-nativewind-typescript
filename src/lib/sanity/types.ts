@@ -292,13 +292,17 @@ export type GET_WORKOUT_DETAIL_QUERY_RESULT = {
   }> | null;
 } | null;
 
-// Source: ../src/app/(app)/(tabs)/profile/index.tsx
-// Variable: PROFILE_WORKOUTS_QUERY
-// Query: *[_type == "workout" && userId == $userId] {  date,  duration}
-export type PROFILE_WORKOUTS_QUERY_RESULT = Array<{
+// Source: ../src/app/(app)/(tabs)/index.tsx
+// Variable: HOME_LAST_WORKOUT_QUERY
+// Query: *[_type == "workout" && userId == $userId] | order(date desc) [0] {    _id,    date,    duration,    exercises[] {      "setCount": count(sets)    }  }
+export type HOME_LAST_WORKOUT_QUERY_RESULT = {
+  _id: string;
   date: string | null;
   duration: number | null;
-}>;
+  exercises: Array<{
+    setCount: number | null;
+  }> | null;
+} | null;
 
 // Source: ../src/app/(app)/exercise-detail.tsx
 // Variable: EXERCISE_DETAIL_QUERY
@@ -319,3 +323,11 @@ export type EXERCISE_DETAIL_QUERY_RESULT = {
     _type: "image";
   } | null;
 } | null;
+
+// Source: ../src/components/ProfileFitnessStats.tsx
+// Variable: PROFILE_WORKOUTS_QUERY
+// Query: *[_type == "workout" && userId == $userId] {  date,  duration}
+export type PROFILE_WORKOUTS_QUERY_RESULT = Array<{
+  date: string | null;
+  duration: number | null;
+}>;
