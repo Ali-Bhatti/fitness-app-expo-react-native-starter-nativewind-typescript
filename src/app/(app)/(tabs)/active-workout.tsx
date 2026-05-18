@@ -204,7 +204,9 @@ export default function ActiveWorkout() {
                     {workoutExercises.length === 0 && (
                         <FTCard className='items-center py-10 mt-2'>
                             <View className='w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-4'>
-                                <AntDesign name='plus' size={28} color='#0a7ea4' />
+                                <Pressable onPress={() => setShowPicker(true)} className='w-16 h-16 items-center justify-center rounded-full active:bg-primary/10'>
+                                    <AntDesign name='plus' size={28} color='#0a7ea4' />
+                                </Pressable>
                             </View>
                             <Text className='text-base font-semibold text-gray-700 mb-1'>No exercises yet</Text>
                             <Text className='text-sm text-gray-400 text-center'>
