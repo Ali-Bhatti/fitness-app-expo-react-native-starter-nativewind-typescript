@@ -1,9 +1,10 @@
 import AntDesign from '@expo/vector-icons/AntDesign'
 import { useRouter } from 'expo-router'
+import Fuse from 'fuse.js'
 import groq from 'groq'
 import { defineQuery } from 'groq'
-import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, FlatList, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import DifficultyBadge, { Difficulty } from '@/components/DifficultyBadge'
 import ExerciseCard from '@/components/ExerciseCard'
@@ -28,10 +29,11 @@ export const exerciseQueryDQ = defineQuery(`*[_type == "exercise"] | order(name 
     description,
     difficulty,
     target,
+    alternateNames,
     image
 }`);
 
-const DIFFICULTIES: Difficulty[] = ['beginner', 'intermediate', 'advanced']
+const DIFFICULTIES: Difficulty[] = ['all', 'beginner', 'intermediate', 'advanced']
 
 function SearchBar({ value, onChange }: { value: string; onChange: (text: string) => void }) {
     return (
@@ -53,33 +55,27 @@ function SearchBar({ value, onChange }: { value: string; onChange: (text: string
 function FilterBar({
     active,
     onSelect,
+    disabled,
 }: {
-    active: Difficulty | null
-    onSelect: (d: Difficulty | null) => void
+    active: Difficulty
+    onSelect: (d: Difficulty) => void
+    disabled?: boolean
 }) {
     return (
         <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className='mb-4'
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+            className='mb-2'
+            style={{ flexGrow: 0, flexShrink: 0 }}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}
         >
-            {/* All */}
-            <Pressable
-                onPress={() => onSelect(null)}
-                className={`rounded-full px-3 py-2 active:opacity-70 ${active === null ? 'bg-[#0a7ea4]' : 'bg-gray-100'}`}
-            >
-                <Text className={`text-xs font-semibold ${active === null ? 'text-white' : 'text-gray-600'}`}>
-                    All
-                </Text>
-            </Pressable>
-
             {DIFFICULTIES.map((d) => (
                 <DifficultyBadge
                     key={d}
                     difficulty={d}
                     isActive={active === d}
-                    onPress={() => onSelect(active === d ? null : d)}
+                    disabled={disabled}
+                    onPress={() => onSelect(d)}
                 />
             ))}
         </ScrollView>
@@ -91,18 +87,35 @@ export default function Exercises() {
 
     const [allExercises, setAllExercises] = useState<Exercise[]>([])
     const [exercises, setExercises] = useState<Exercise[]>([])
+    const [matchedAliases, setMatchedAliases] = useState<Record<string, string>>({})
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [search, setSearch] = useState('')
-    const [difficultyFilter] = useState<Difficulty | null>(null)
+    const [difficultyFilter, setDifficultyFilter] = useState<Difficulty>('all')
 
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    // Build Fuse index whenever the exercise list changes
+    const fuse = useMemo(
+        () =>
+            new Fuse(allExercises, {
+                keys: [
+                    { name: 'name',           weight: 0.5  },
+                    { name: 'alternateNames', weight: 0.3  },
+                    { name: 'target',         weight: 0.15 },
+                    { name: 'description',    weight: 0.05 },
+                ],
+                threshold: 0.35,      // 0 = exact only, 1 = match anything
+                includeScore: true,
+                includeMatches: true, // needed to detect which field triggered the match
+                ignoreLocation: true, // don't penalise matches in the middle of a string
+                useExtendedSearch: false,
+            }),
+        [allExercises]
+    )
 
     const fetchExercises = async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true)
         try {
             const data = await sanityClient.fetch<Exercise[]>(exerciseQueryDQ)
-
             setAllExercises(data)
             setExercises(data)
         } catch (err) {
@@ -119,28 +132,39 @@ export default function Exercises() {
         fetchExercises()
     }, [])
 
-    // useEffect(() => {
-    //     if (debounceRef.current) clearTimeout(debounceRef.current)
-    //     debounceRef.current = setTimeout(() => fetchExercises(search), 400)
-    //     return () => {
-    //         if (debounceRef.current) clearTimeout(debounceRef.current)
-    //     }
-    // }, [search])
-
-    // Client-side filtering
+    // Fuse.js search — scored, fuzzy, weighted by field importance
     useEffect(() => {
-        const term = search.trim().toLowerCase()
+        const term = search.trim()
         if (!term) {
             setExercises(allExercises)
+            setMatchedAliases({})
             return
         }
-        const filtered = allExercises.filter(
-            (ex) =>
-                ex.name?.toLowerCase().includes(term) ||
-                ex.description?.toLowerCase().includes(term)
-        )
-        setExercises(filtered)
-    }, [search, allExercises])
+
+        const results = fuse.search(term) // already sorted by score (lowest = best)
+
+        const aliases: Record<string, string> = {}
+        const sorted = results.map(({ item, matches }) => {
+            // Find which alternateNames field triggered the match (if any)
+            const aliasMatch = matches?.find((m) => m.key === 'alternateNames')
+            const nameLower = item.name?.toLowerCase() ?? ''
+            const termLower = term.toLowerCase()
+
+            if (aliasMatch && !nameLower.includes(termLower)) {
+                const matchedAlias = item.alternateNames?.[aliasMatch.refIndex ?? 0]
+                if (matchedAlias) aliases[item._id] = matchedAlias
+            }
+            return item
+        })
+
+        setExercises(sorted)
+        setMatchedAliases(aliases)
+    }, [search, allExercises, fuse])
+
+    // Apply difficulty chip filter on top of search results
+    const visibleExercises = difficultyFilter === 'all'
+        ? exercises
+        : exercises.filter((ex) => ex.difficulty === difficultyFilter)
 
     return (
         <SafeAreaView className='flex-1 bg-gray-50' edges={['top']}>
@@ -153,7 +177,7 @@ export default function Exercises() {
             <SearchBar value={search} onChange={setSearch} />
 
             {/* Difficulty filters */}
-            {/* <FilterBar active={difficultyFilter} onSelect={setDifficultyFilter} /> */}
+            <FilterBar active={difficultyFilter} onSelect={setDifficultyFilter} disabled={loading} />
 
             {/* List */}
             {loading ? (
@@ -162,11 +186,12 @@ export default function Exercises() {
                 </View>
             ) : (
                 <FlatList
-                    data={exercises}
+                    data={visibleExercises}
                     keyExtractor={(item) => item._id}
                     renderItem={({ item }) => (
                         <ExerciseCard
                             item={item}
+                            matchedAlias={matchedAliases[item._id]}
                             onPress={() => router.push(`/exercise-detail?id=${item._id}` as never)}
                         />
                     )}

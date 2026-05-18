@@ -231,13 +231,14 @@ export type EXERCISES_QUERY_RESULT = Array<{
 
 // Source: ../src/app/(app)/(tabs)/exercises.tsx
 // Variable: exerciseQueryDQ
-// Query: *[_type == "exercise"] | order(name asc) {    _id,    name,    description,    difficulty,    target,    image}
+// Query: *[_type == "exercise"] | order(name asc) {    _id,    name,    description,    difficulty,    target,    alternateNames,    image}
 export type ExerciseQueryDQResult = Array<{
   _id: string;
   name: string | null;
   description: string | null;
   difficulty: "advanced" | "beginner" | "intermediate" | null;
   target: string | null;
+  alternateNames: Array<string> | null;
   image: {
     asset?: SanityImageAssetReference;
     media?: unknown;
@@ -323,6 +324,14 @@ export type EXERCISE_DETAIL_QUERY_RESULT = {
     _type: "image";
   } | null;
 } | null;
+
+// Source: ../src/components/ProfileAchievements.tsx
+// Variable: ACHIEVEMENTS_WORKOUTS_QUERY
+// Query: *[_type == "workout" && userId == $userId] {  date,  duration}
+export type ACHIEVEMENTS_WORKOUTS_QUERY_RESULT = Array<{
+  date: string | null;
+  duration: number | null;
+}>;
 
 // Source: ../src/components/ProfileFitnessStats.tsx
 // Variable: PROFILE_WORKOUTS_QUERY

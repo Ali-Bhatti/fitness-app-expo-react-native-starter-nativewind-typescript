@@ -1,7 +1,7 @@
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
 
-export type Difficulty = 'beginner' | 'intermediate' | 'advanced'
+export type Difficulty = 'beginner' | 'intermediate' | 'advanced' | 'all'
 
 export const DIFFICULTY_CONFIG: Record<
     Difficulty,
@@ -25,6 +25,12 @@ export const DIFFICULTY_CONFIG: Record<
         solidBg: 'bg-red-600',
         lightText: 'text-red-800',
     },
+    all: {
+        label: 'All',
+        lightBg: 'bg-gray-100',
+        solidBg: 'bg-gray-700',
+        lightText: 'text-gray-600',
+    },
 }
 
 type Props = {
@@ -33,9 +39,11 @@ type Props = {
     onPress?: () => void
     /** Shows solid background — used for the active filter state */
     isActive?: boolean
+    /** Disables press interaction */
+    disabled?: boolean
 }
 
-export default function DifficultyBadge({ difficulty, onPress, isActive = false }: Props) {
+export default function DifficultyBadge({ difficulty, onPress, isActive = false, disabled = false }: Props) {
     const config = DIFFICULTY_CONFIG[difficulty]
     if (!config) return null
 
@@ -43,14 +51,14 @@ export default function DifficultyBadge({ difficulty, onPress, isActive = false 
     const textColor = isActive ? 'text-white' : config.lightText
 
     const badge = (
-        <View className={`self-start rounded-full px-3 py-1 ${bg}`}>
+        <View className={`self-start rounded-full px-3 py-1 ${bg} ${disabled ? 'opacity-40' : ''}`}>
             <Text className={`text-xs font-semibold ${textColor}`}>{config.label}</Text>
         </View>
     )
 
     if (onPress) {
         return (
-            <Pressable onPress={onPress} className='active:opacity-70'>
+            <Pressable onPress={onPress} disabled={disabled} className='active:opacity-70'>
                 {badge}
             </Pressable>
         )

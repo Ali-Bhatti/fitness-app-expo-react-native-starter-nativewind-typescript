@@ -19,9 +19,10 @@ type Props = {
     item: Exercise
     onPress: () => void
     selectionMode?: boolean
+    matchedAlias?: string
 }
 
-export default function ExerciseCard({ item, onPress, selectionMode }: Props) {
+export default function ExerciseCard({ item, onPress, selectionMode, matchedAlias }: Props) {
     return (
         <Pressable
             onPress={onPress}
@@ -69,6 +70,15 @@ export default function ExerciseCard({ item, onPress, selectionMode }: Props) {
                     {item.difficulty ? (
                         <View className='mt-2'>
                             <DifficultyBadge difficulty={item.difficulty} />
+                        </View>
+                    ) : null}
+
+                    {matchedAlias ? (
+                        <View className='flex-row items-center gap-1 mt-1.5'>
+                            <AntDesign name='tag' size={10} color='#0a7ea4' />
+                            <Text className='text-[11px] text-primary font-medium italic'>
+                                also known as "{matchedAlias}"
+                            </Text>
                         </View>
                     ) : null}
                 </View>
