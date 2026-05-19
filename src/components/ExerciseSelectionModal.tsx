@@ -1,5 +1,5 @@
 import AntDesign from '@expo/vector-icons/AntDesign'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect } from 'react'
 import {
     ActivityIndicator,
     FlatList,
@@ -7,34 +7,12 @@ import {
     Pressable,
     RefreshControl,
     Text,
-    TextInput,
     View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import ExerciseCard from '@/components/ExerciseCard'
-import { sanityClient } from '@/lib/sanity/client'
-import { Exercise } from '@/lib/sanity/types'
-import { exerciseQueryDQ } from '@/app/(app)/(tabs)/exercises'
-
-// ─── Search bar ───────────────────────────────────────────────────────────────
-
-function SearchBar({ value, onChange }: { value: string; onChange: (text: string) => void }) {
-    return (
-        <View className='mx-4 mb-3 flex-row items-center bg-gray-100 rounded-xl px-4 py-2 gap-2'>
-            <AntDesign name='search1' size={16} color='#9CA3AF' />
-            <TextInput
-                value={value}
-                onChangeText={onChange}
-                placeholder='Search exercises...'
-                placeholderTextColor='#9CA3AF'
-                className='flex-1 text-gray-900'
-                returnKeyType='search'
-                clearButtonMode='while-editing'
-                autoCorrect={false}
-            />
-        </View>
-    )
-}
+import ExerciseSearchBar from '@/components/ExerciseSearchBar'
+import { useExerciseSearch } from '@/hooks/useExerciseSearch'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -47,53 +25,26 @@ type Props = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ExerciseSelectionModal({ visible, onClose, onSelect }: Props) {
-    const [allExercises, setAllExercises] = useState<Exercise[]>([])
-    const [exercises, setExercises] = useState<Exercise[]>([])
-    const [loading, setLoading] = useState(true)
-    const [refreshing, setRefreshing] = useState(false)
-    const [search, setSearch] = useState('')
+    const {
+        visibleExercises,
+        matchedAliases,
+        loading,
+        refreshing,
+        search,
+        setSearch,
+        triggerFetch,
+        resetSearch,
+        handleRefresh,
+    } = useExerciseSearch({ fetchOnDemand: true })
 
-    const hasFetched = useRef(false)
-
-    const fetchExercises = async (isRefresh = false) => {
-        if (isRefresh) setRefreshing(true)
-        try {
-            const data = await sanityClient.fetch<Exercise[]>(exerciseQueryDQ)
-            setAllExercises(data)
-            setExercises(data)
-        } catch (err) {
-            console.error('ExerciseSelectionModal fetch error:', err)
-        } finally {
-            if (isRefresh) setRefreshing(false)
-            else setLoading(false)
-        }
-    }
-
-    // Fetch once when modal first opens
+    // Fetch once when modal first opens; reset search when closed
     useEffect(() => {
-        if (visible && !hasFetched.current) {
-            hasFetched.current = true
-            fetchExercises()
+        if (visible) {
+            triggerFetch()
+        } else {
+            resetSearch()
         }
-        // Reset search when closed
-        if (!visible) setSearch('')
     }, [visible])
-
-    // Client-side search filter
-    useEffect(() => {
-        const term = search.trim().toLowerCase()
-        if (!term) {
-            setExercises(allExercises)
-            return
-        }
-        setExercises(
-            allExercises.filter(
-                (ex) =>
-                    ex.name?.toLowerCase().includes(term) ||
-                    ex.description?.toLowerCase().includes(term)
-            )
-        )
-    }, [search, allExercises])
 
     return (
         <Modal
@@ -120,7 +71,7 @@ export default function ExerciseSelectionModal({ visible, onClose, onSelect }: P
 
                 {/* Search */}
                 <View className='pt-3'>
-                    <SearchBar value={search} onChange={setSearch} />
+                    <ExerciseSearchBar value={search} onChange={setSearch} />
                 </View>
 
                 {/* List */}
@@ -130,11 +81,12 @@ export default function ExerciseSelectionModal({ visible, onClose, onSelect }: P
                     </View>
                 ) : (
                     <FlatList
-                        data={exercises}
+                        data={visibleExercises}
                         keyExtractor={(item) => item._id}
                         renderItem={({ item }) => (
                             <ExerciseCard
                                 item={item}
+                                matchedAlias={matchedAliases[item._id]}
                                 onPress={() => {
                                     onSelect(item._id, item.name ?? 'Unknown', item.target ?? null)
                                     onClose()
@@ -154,7 +106,7 @@ export default function ExerciseSelectionModal({ visible, onClose, onSelect }: P
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing}
-                                onRefresh={() => fetchExercises(true)}
+                                onRefresh={handleRefresh}
                                 tintColor='#0a7ea4'
                                 colors={['#0a7ea4']}
                             />
