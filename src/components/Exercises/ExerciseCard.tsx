@@ -1,8 +1,8 @@
-import FTCard from '@/components/FTCard'
+import FTCard from '@/components/FTComponents/FTCard'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import React from 'react'
 import { Image, Pressable, Text, View } from 'react-native'
-import DifficultyBadge, { Difficulty } from '@/components/DifficultyBadge'
+import DifficultyBadge, { Difficulty } from '@/components/Exercises/DifficultyBadge'
 import { Exercise } from '@/lib/sanity/types'
 import { urlFor } from '@/lib/sanity/client'
 

@@ -1,5 +1,5 @@
-import FTAlert from '@/components/FTAlert'
-import FTCard from '@/components/FTCard'
+import FTAlert from '@/components/FTComponents/FTAlert'
+import FTCard from '@/components/FTComponents/FTCard'
 import { useUser } from '@clerk/expo'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import { useRouter } from 'expo-router'
@@ -45,11 +45,10 @@ function Field({
                 editable={editable}
                 autoCapitalize={autoCapitalize}
                 autoCorrect={false}
-                className={`h-12 rounded-xl px-4 text-base text-gray-900 border ${
-                    editable
+                className={`h-12 rounded-xl px-4 text-base text-gray-900 border ${editable
                         ? 'bg-white border-gray-200 focus:border-primary'
                         : 'bg-gray-50 border-gray-100 text-gray-400'
-                }`}
+                    }`}
             />
         </View>
     )
@@ -182,9 +181,8 @@ export default function EditProfile() {
                     <Pressable
                         onPress={handleSave}
                         disabled={!isDirty || saving}
-                        className={`h-13 rounded-2xl items-center justify-center ${
-                            isDirty && !saving ? 'bg-primary active:bg-primary/90' : 'bg-gray-200'
-                        }`}
+                        className={`h-13 rounded-2xl items-center justify-center ${isDirty && !saving ? 'bg-primary active:bg-primary/90' : 'bg-gray-200'
+                            }`}
                         style={{ height: 52 }}
                     >
                         {saving ? (

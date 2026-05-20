@@ -1,4 +1,4 @@
-import TabHeader from '@/components/TabHeader'
+import TabHeader from '@/components/FTComponents/TabHeader'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import { useRouter } from 'expo-router'
 import React from 'react'

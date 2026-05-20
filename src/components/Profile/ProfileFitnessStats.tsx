@@ -1,4 +1,4 @@
-import FTCard from '@/components/FTCard'
+import FTCard from '@/components/FTComponents/FTCard'
 import { sanityClient } from '@/lib/sanity/client'
 import { PROFILE_WORKOUTS_QUERY_RESULT } from '@/lib/sanity/types'
 import { formatDuration } from '@/lib/utils'

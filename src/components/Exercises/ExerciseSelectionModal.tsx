@@ -10,8 +10,8 @@ import {
     View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import ExerciseCard from '@/components/ExerciseCard'
-import ExerciseSearchBar from '@/components/ExerciseSearchBar'
+import ExerciseCard from '@/components/Exercises/ExerciseCard'
+import ExerciseSearchBar from '@/components/Exercises/ExerciseSearchBar'
 import { useExerciseSearch } from '@/hooks/useExerciseSearch'
 
 // ─── Props ────────────────────────────────────────────────────────────────────

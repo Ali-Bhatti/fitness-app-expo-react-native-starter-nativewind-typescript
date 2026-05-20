@@ -1,7 +1,7 @@
 import Fuse from 'fuse.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { exerciseQueryDQ } from '@/app/(app)/(tabs)/exercises'
-import { Difficulty } from '@/components/DifficultyBadge'
+import { Difficulty } from '@/components/Exercises/DifficultyBadge'
 import { sanityClient } from '@/lib/sanity/client'
 import { Exercise } from '@/lib/sanity/types'
 

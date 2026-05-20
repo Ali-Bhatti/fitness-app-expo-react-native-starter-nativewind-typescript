@@ -1,4 +1,4 @@
-import FTCard from '@/components/FTCard'
+import FTCard from '@/components/FTComponents/FTCard'
 import { GET_WORKOUTS_QUERY_RESULT } from '@/lib/sanity/types'
 import { formatDuration, formatRelativeDate } from '@/lib/utils'
 import AntDesign from '@expo/vector-icons/AntDesign'

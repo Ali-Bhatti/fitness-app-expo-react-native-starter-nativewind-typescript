@@ -1,5 +1,5 @@
-import FTAlert from '@/components/FTAlert'
-import FTCard from '@/components/FTCard'
+import FTAlert from '@/components/FTComponents/FTAlert'
+import FTCard from '@/components/FTComponents/FTCard'
 import { formatDuration, formatRelativeDate, toKg, formatVolume } from '@/lib/utils'
 import { sanityClient } from '@/lib/sanity/client'
 import { GET_WORKOUT_DETAIL_QUERY_RESULT } from '@/lib/sanity/types'
