@@ -23,10 +23,14 @@ export default function ProfilePage() {
     const [refreshing, setRefreshing] = useState(false)
     const [showSignOutAlert, setShowSignOutAlert] = useState(false)
 
-    const handleRefresh = () => {
+    const handleRefresh = async () => {
         setRefreshing(true)
-        setRefreshKey((k) => k + 1)
-        setTimeout(() => setRefreshing(false), 800)
+        try {
+            await user?.reload()
+            setRefreshKey((k) => k + 1)
+        } finally {
+            setRefreshing(false)
+        }
     }
 
     const memberSince = user?.createdAt
@@ -59,6 +63,7 @@ export default function ProfilePage() {
                         onRefresh={handleRefresh}
                         tintColor='#0a7ea4'
                         colors={['#0a7ea4']}
+                        title='Pull to refresh profile'
                     />
                 }
             >

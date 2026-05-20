@@ -1,27 +1,32 @@
 import FTCard from '@/components/FTCard'
 import AntDesign from '@expo/vector-icons/AntDesign'
+import { useRouter } from 'expo-router'
 import React from 'react'
 import { Pressable, Text, View } from 'react-native'
+
+const router = useRouter()
 
 type SettingItem = {
     icon: React.ComponentProps<typeof AntDesign>['name']
     label: string
     iconBg: string
     iconColor: string
+    onPress: () => void
 }
 
 const SETTINGS_ITEMS: SettingItem[] = [
-    { icon: 'edit',             label: 'Edit Profile',   iconBg: '#E0F2FE', iconColor: '#0a7ea4' },
-    { icon: 'notification',     label: 'Notifications',  iconBg: '#ECFDF5', iconColor: '#10B981' },
-    { icon: 'tool',             label: 'Preferences',    iconBg: '#EDE9FE', iconColor: '#8B5CF6' },
-    { icon: 'lock',             label: 'Privacy',        iconBg: '#FFF7ED', iconColor: '#F97316' },
-    { icon: 'questioncircleo',  label: 'Help & Support', iconBg: '#FFFBEB', iconColor: '#F59E0B' },
+    { icon: 'edit',             label: 'Edit Profile',   iconBg: '#E0F2FE', iconColor: '#0a7ea4', onPress: () => router.push('/profile/edit-profile') },
+    { icon: 'notification',     label: 'Notifications',  iconBg: '#ECFDF5', iconColor: '#10B981', onPress: () => router.push('/profile/notifications') },
+    { icon: 'tool',             label: 'Preferences',    iconBg: '#EDE9FE', iconColor: '#8B5CF6', onPress: () => router.push('/profile/preferences') },
+    // { icon: 'lock',             label: 'Privacy',        iconBg: '#FFF7ED', iconColor: '#F97316' , onPress: () => router.push('/profile/privacy') },
+    // { icon: 'questioncircleo',  label: 'Help & Support', iconBg: '#FFFBEB', iconColor: '#F59E0B' , onPress: () => router.push('/profile/support') },
 ]
 
-function SettingsRow({ icon, label, iconBg, iconColor, isFirst }: SettingItem & { isFirst: boolean }) {
+function SettingsRow({ icon, label, iconBg, iconColor, isFirst, onPress }: SettingItem & { isFirst: boolean, onPress: () => void }) {
     return (
         <Pressable
             className={`flex-row items-center gap-3 px-4 py-3.5 active:bg-gray-50 ${isFirst ? '' : 'border-t border-gray-100'}`}
+            onPress={onPress}
         >
             <View className='w-9 h-9 rounded-xl items-center justify-center' style={{ backgroundColor: iconBg }}>
                 <AntDesign name={icon} size={16} color={iconColor} />
@@ -38,7 +43,7 @@ export default function AccountSettings() {
             <Text className='text-base font-bold text-gray-900 mb-3'>Account Settings</Text>
             <FTCard className='p-0 overflow-hidden'>
                 {SETTINGS_ITEMS.map((item, idx) => (
-                    <SettingsRow key={item.label} {...item} isFirst={idx === 0} />
+                    <SettingsRow key={item.label} {...item} isFirst={idx === 0} onPress={item.onPress} />
                 ))}
             </FTCard>
         </View>
