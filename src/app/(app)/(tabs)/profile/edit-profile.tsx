@@ -46,8 +46,8 @@ function Field({
                 autoCapitalize={autoCapitalize}
                 autoCorrect={false}
                 className={`h-12 rounded-xl px-4 text-base text-gray-900 border ${editable
-                        ? 'bg-white border-gray-200 focus:border-primary'
-                        : 'bg-gray-50 border-gray-100 text-gray-400'
+                    ? 'bg-white border-gray-200 focus:border-primary'
+                    : 'bg-gray-50 border-gray-100 text-gray-400'
                     }`}
             />
         </View>
@@ -60,7 +60,6 @@ export default function EditProfile() {
 
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
-    const [username, setUsername] = useState('')
     const [saving, setSaving] = useState(false)
     const [alert, setAlert] = useState<AlertState>({ visible: false, type: 'success', title: '', message: '' })
 
@@ -68,14 +67,12 @@ export default function EditProfile() {
         if (isLoaded && user) {
             setFirstName(user.firstName ?? '')
             setLastName(user.lastName ?? '')
-            setUsername(user.username ?? '')
         }
     }, [isLoaded, user])
 
     const isDirty =
         firstName.trim() !== (user?.firstName ?? '') ||
-        lastName.trim() !== (user?.lastName ?? '') ||
-        username.trim() !== (user?.username ?? '')
+        lastName.trim() !== (user?.lastName ?? '')
 
     const handleSave = async () => {
         if (!user || !isDirty) return
@@ -84,7 +81,6 @@ export default function EditProfile() {
             await user.update({
                 firstName: firstName.trim(),
                 lastName: lastName.trim(),
-                username: username.trim() || undefined,
             })
             setAlert({ visible: true, type: 'success', title: 'Profile updated', message: 'Your changes have been saved.' })
         } catch (err: any) {
@@ -154,13 +150,6 @@ export default function EditProfile() {
                     {/* Account fields */}
                     <FTCard className='gap-4'>
                         <Text className='text-sm font-bold text-gray-700'>Account</Text>
-                        <Field
-                            label='Username'
-                            value={username}
-                            onChangeText={setUsername}
-                            placeholder='username'
-                            autoCapitalize='none'
-                        />
                         <Field
                             label='Email'
                             value={email}
