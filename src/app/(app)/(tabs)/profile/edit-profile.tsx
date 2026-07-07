@@ -1,5 +1,6 @@
 import FTAlert from '@/components/FTComponents/FTAlert'
 import FTCard from '@/components/FTComponents/FTCard'
+import FTField from '@/components/FTComponents/FTField'
 import { useUser } from '@clerk/expo'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import { useRouter } from 'expo-router'
@@ -11,7 +12,6 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from 'react-native'
 import { Image } from 'expo-image'
@@ -19,37 +19,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 type AlertState = { visible: boolean; type: 'success' | 'error'; title: string; message: string }
 
-function Field({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    editable = true,
-    autoCapitalize = 'words',
-}: {
-    label: string
-    value: string
-    onChangeText?: (t: string) => void
-    placeholder?: string
-    editable?: boolean
-    autoCapitalize?: 'none' | 'words' | 'sentences'
-}) {
+function InfoBanner({ icon, text }: { icon: string; text: string }) {
     return (
-        <View className='gap-1.5'>
-            <Text className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>{label}</Text>
-            <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor='#9CA3AF'
-                editable={editable}
-                autoCapitalize={autoCapitalize}
-                autoCorrect={false}
-                className={`h-12 rounded-xl px-4 text-base text-gray-900 border ${editable
-                    ? 'bg-white border-gray-200 focus:border-primary'
-                    : 'bg-gray-50 border-gray-100 text-gray-400'
-                    }`}
-            />
+        <View className='flex-row items-center gap-2 bg-blue-50 rounded-xl px-3 py-2.5'>
+            <AntDesign name={icon as any} size={14} color='#0a7ea4' />
+            <Text className='text-xs text-primary flex-1'>{text}</Text>
         </View>
     )
 }
@@ -70,19 +44,20 @@ export default function EditProfile() {
         }
     }, [isLoaded, user])
 
+    const isOAuth = (user?.externalAccounts?.length ?? 0) > 0
+    const oAuthProvider = user?.externalAccounts?.[0]?.provider ?? 'your provider'
+    const email = user?.primaryEmailAddress?.emailAddress ?? ''
+
     const isDirty =
         firstName.trim() !== (user?.firstName ?? '') ||
         lastName.trim() !== (user?.lastName ?? '')
 
-    const handleSave = async () => {
+    const handleSaveProfile = async () => {
         if (!user || !isDirty) return
         setSaving(true)
         try {
-            await user.update({
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-            })
-            setAlert({ visible: true, type: 'success', title: 'Profile updated', message: 'Your changes have been saved.' })
+            await user.update({ firstName: firstName.trim(), lastName: lastName.trim() })
+            setAlert({ visible: true, type: 'success', title: 'Profile updated', message: 'Your name has been saved.' })
         } catch (err: any) {
             const msg = err?.errors?.[0]?.longMessage ?? err?.message ?? 'Something went wrong.'
             setAlert({ visible: true, type: 'error', title: 'Update failed', message: msg })
@@ -92,8 +67,6 @@ export default function EditProfile() {
     }
 
     const avatarUrl = user?.imageUrl ?? user?.externalAccounts?.[0]?.imageUrl ?? null
-    const isOAuth = (user?.externalAccounts?.length ?? 0) > 0
-    const email = user?.primaryEmailAddress?.emailAddress ?? ''
 
     if (!isLoaded) {
         return (
@@ -135,43 +108,40 @@ export default function EditProfile() {
                         </View>
                         {isOAuth && (
                             <Text className='text-xs text-gray-400 mt-2 text-center'>
-                                Profile photo managed by your sign-in provider
+                                Profile photo managed by {oAuthProvider}
                             </Text>
                         )}
                     </View>
 
-                    {/* Name fields */}
+                    {/* Personal Info */}
                     <FTCard className='gap-4'>
                         <Text className='text-sm font-bold text-gray-700'>Personal Info</Text>
-                        <Field label='First Name' value={firstName} onChangeText={setFirstName} placeholder='First name' />
-                        <Field label='Last Name' value={lastName} onChangeText={setLastName} placeholder='Last name' />
+                        <FTField label='First Name' value={firstName} onChangeText={setFirstName} placeholder='First name' />
+                        <FTField label='Last Name' value={lastName} onChangeText={setLastName} placeholder='Last name' />
                     </FTCard>
 
-                    {/* Account fields */}
+                    {/* Account */}
                     <FTCard className='gap-4'>
                         <Text className='text-sm font-bold text-gray-700'>Account</Text>
-                        <Field
+                        <FTField
                             label='Email'
                             value={email}
                             editable={false}
                             autoCapitalize='none'
                         />
                         {isOAuth && (
-                            <View className='flex-row items-center gap-2 bg-blue-50 rounded-xl px-3 py-2.5'>
-                                <AntDesign name='infocirlceo' size={14} color='#0a7ea4' />
-                                <Text className='text-xs text-primary flex-1'>
-                                    Email is managed by your {user?.externalAccounts?.[0]?.provider} account.
-                                </Text>
-                            </View>
+                            <InfoBanner
+                                icon='infocirlceo'
+                                text={`Signed in with ${oAuthProvider} — email is managed by your ${oAuthProvider} account and cannot be changed here.`}
+                            />
                         )}
                     </FTCard>
 
-                    {/* Save */}
+                    {/* Save profile button */}
                     <Pressable
-                        onPress={handleSave}
+                        onPress={handleSaveProfile}
                         disabled={!isDirty || saving}
-                        className={`h-13 rounded-2xl items-center justify-center ${isDirty && !saving ? 'bg-primary active:bg-primary/90' : 'bg-gray-200'
-                            }`}
+                        className={`rounded-2xl items-center justify-center ${isDirty && !saving ? 'bg-primary active:bg-primary/90' : 'bg-gray-200'}`}
                         style={{ height: 52 }}
                     >
                         {saving ? (
@@ -194,8 +164,15 @@ export default function EditProfile() {
                 title={alert.title}
                 message={alert.message}
                 onDismiss={() => setAlert((a) => ({ ...a, visible: false }))}
-                buttons={[{ text: 'OK', style: 'default', onPress: () => alert.type === 'success' ? router.back() : setAlert((a) => ({ ...a, visible: false })) }]}
+                buttons={[{
+                    text: 'OK',
+                    style: 'default',
+                    onPress: () => alert.type === 'success'
+                        ? router.back()
+                        : setAlert((a) => ({ ...a, visible: false }))
+                }]}
             />
         </SafeAreaView>
     )
 }
+

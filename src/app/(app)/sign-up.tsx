@@ -1,8 +1,9 @@
 import FitTrackerLogo from '@/components/FTComponents/FitTrackerLogo'
+import FTField from '@/components/FTComponents/FTField'
+import VerificationScreen from '@/components/Auth/VerificationScreen'
 import SpinningIcon from '@/components/ui/SpinningIcon'
 import { ThemedView } from '@/components/ui/themed-view'
 import { useAuth, useSignUp } from '@clerk/expo'
-import { Ionicons } from '@expo/vector-icons'
 import { Link, useFocusEffect } from 'expo-router'
 import React from 'react'
 import {
@@ -11,7 +12,6 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from 'react-native'
 
@@ -29,19 +29,15 @@ export default function Page() {
     const { signUp, errors, fetchStatus } = useSignUp()
     const { isSignedIn } = useAuth()
 
-
     const [emailAddress, setEmailAddress] = React.useState('')
     const [password, setPassword] = React.useState('')
-    const [code, setCode] = React.useState('')
     const [isLoading, setIsLoading] = React.useState(false)
-    const [showPassword, setShowPassword] = React.useState(false)
 
     useFocusEffect(
         React.useCallback(() => {
             void signUp.reset()
             setEmailAddress('')
             setPassword('')
-            setCode('')
             setIsLoading(false)
         }, []),
     )
@@ -58,17 +54,6 @@ export default function Page() {
         setIsLoading(false)
     }
 
-    const handleVerify = async () => {
-        setIsLoading(true)
-        await signUp.verifications.verifyEmailCode({ code })
-        if (signUp.status === 'complete') {
-            await signUp.finalize()
-        } else {
-            console.log('Sign-up attempt not complete:', signUp.status)
-        }
-        setIsLoading(false)
-    }
-
     if (signUp.status === 'complete' || isSignedIn) {
         return null
     }
@@ -79,61 +64,24 @@ export default function Page() {
         signUp.missingFields.length === 0
     ) {
         return (
-            <ThemedView className="flex-1">
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    className="flex-1 justify-center px-6 bg-gray-100"
-                >
-                    <View className="bg-white rounded-3xl p-6" style={cardShadow}>
-                        <Text className="text-2xl font-bold text-gray-900 text-center mb-2">
-                            Verify Your Email
-                        </Text>
-                        <Text className="text-sm text-gray-500 text-center mb-6">
-                            We sent a code to {emailAddress}
-                        </Text>
-
-                        <Text className="text-sm font-semibold text-gray-700 mb-2">
-                            Verification Code
-                        </Text>
-                        <View className="flex-row items-center border border-gray-200 rounded-xl px-4 mb-2 bg-gray-50">
-                            <Ionicons name="shield-checkmark-outline" size={20} color="#9ca3af" />
-                            <TextInput
-                                className="flex-1 py-3 px-3 text-gray-900"
-                                value={code}
-                                placeholder="Enter 6-digit code"
-                                placeholderTextColor="#9ca3af"
-                                onChangeText={setCode}
-                                keyboardType="numeric"
-                            />
-                        </View>
-                        {errors.fields.code && (
-                            <Text className="text-red-500 text-xs mb-3">
-                                Code is incorrect
-                            </Text>
-                        )}
-
-                        <Pressable
-                            className={`bg-[#0a7ea4] rounded-xl py-4 items-center flex-row justify-center mb-3 ${fetchStatus === 'fetching' ? 'opacity-50' : 'opacity-100'}`}
-                            onPress={handleVerify}
-                            disabled={fetchStatus === 'fetching'}
-                        >
-                            <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-                            <Text className="text-white font-bold text-base ml-2">Verify Email</Text>
-                        </Pressable>
-
-                        <Pressable
-                            className="border border-gray-200 rounded-xl py-4 items-center mb-3"
-                            onPress={() => signUp.verifications.sendEmailCode()}
-                        >
-                            <Text className="text-[#0a7ea4] font-semibold">Send a new code</Text>
-                        </Pressable>
-
-                        <Pressable className="items-center py-2" onPress={() => signUp.reset()}>
-                            <Text className="text-gray-500">Start over</Text>
-                        </Pressable>
-                    </View>
-                </KeyboardAvoidingView>
-            </ThemedView>
+            <VerificationScreen
+                title='Verify Your Email'
+                subtitle={`We sent a code to ${emailAddress}`}
+                codeError={!!errors.fields.code}
+                isLoading={isLoading}
+                onVerify={async (code) => {
+                    setIsLoading(true)
+                    await signUp.verifications.verifyEmailCode({ code })
+                    if (signUp.status === 'complete') {
+                        await signUp.finalize()
+                    } else {
+                        console.log('Sign-up attempt not complete:', signUp.status)
+                    }
+                    setIsLoading(false)
+                }}
+                onResend={() => signUp.verifications.sendEmailCode()}
+                onStartOver={() => signUp.reset()}
+            />
         )
     }
 
@@ -162,56 +110,34 @@ export default function Page() {
                             Create Your Account
                         </Text>
 
-                        {/* Email */}
-                        <Text className="text-sm font-semibold text-gray-700 mb-2">Email</Text>
-                        <View className="flex-row items-center border border-gray-200 rounded-xl px-4 mb-1 bg-gray-50">
-                            <Ionicons name="mail-outline" size={20} color="#9ca3af" />
-                            <TextInput
-                                className="flex-1 px-3 py-3 text-gray-900"
-                                autoCapitalize="none"
-                                value={emailAddress}
-                                placeholder="Enter your email"
-                                placeholderTextColor="#9ca3af"
-                                onChangeText={setEmailAddress}
-                                keyboardType="email-address"
-                                editable={!isLoading}
-                            />
-                        </View>
-                        {errors.fields.emailAddress && (
-                            <Text className="text-red-500 text-xs mb-3 ml-1">
-                                {errors.fields.emailAddress.message}
-                            </Text>
-                        )}
+                        <FTField
+                            label="Email"
+                            labelVariant="auth"
+                            leftIconName="mail-outline"
+                            value={emailAddress}
+                            onChangeText={setEmailAddress}
+                            placeholder="Enter your email"
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            editable={!isLoading}
+                            hint={errors.fields.emailAddress?.message}
+                            hintError
+                        />
 
-                        {/* Password */}
-                        <Text className="text-sm font-semibold text-gray-700 mb-2 mt-3">Password</Text>
-                        <View className="flex-row items-center border border-gray-200 rounded-xl px-4 mb-1 bg-gray-50">
-                            <Ionicons name="lock-closed-outline" size={20} color="#9ca3af" />
-                            <TextInput
-                                className="flex-1 px-3 py-3 text-gray-900"
-                                value={password}
-                                placeholder="Create a password"
-                                placeholderTextColor="#9ca3af"
-                                secureTextEntry={!showPassword}
-                                onChangeText={setPassword}
-                                editable={!isLoading}
-                            />
-                            <Pressable onPress={() => setShowPassword(!showPassword)}>
-                                <Ionicons
-                                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                                    size={20}
-                                    color="#9ca3af"
-                                />
-                            </Pressable>
-                        </View>
-                        <Text className="text-gray-400 text-xs ml-1 mb-1">
-                            Must be at least 8 characters
-                        </Text>
-                        {errors.fields.password && (
-                            <Text className="text-red-500 text-xs mb-3 ml-1">
-                                {errors.fields.password.message}
-                            </Text>
-                        )}
+                        <FTField
+                            label="Password"
+                            labelVariant="auth"
+                            leftIconName="lock-closed-outline"
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder="Create a password"
+                            autoCapitalize="none"
+                            secureTextEntry
+                            editable={!isLoading}
+                            hint={errors.fields.password?.message || 'Must be at least 8 characters'}
+                            hintError={!!errors.fields.password?.message}
+                            className="mt-4"
+                        />
 
                         {/* Create Account Button */}
                         <Pressable
