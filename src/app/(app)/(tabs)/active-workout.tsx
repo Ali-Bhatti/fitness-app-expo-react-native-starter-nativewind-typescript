@@ -7,10 +7,10 @@ import { useWorkoutStore } from '../../../../store/workout-store'
 import { useAuth } from '@clerk/expo'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useCallback, useRef, useState } from 'react'
-import { useStopwatch } from 'react-timer-hook'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
     ActivityIndicator,
+    AppState,
     KeyboardAvoidingView,
     Platform,
     Pressable,
@@ -28,25 +28,54 @@ export default function ActiveWorkout() {
     const { userId } = useAuth()
     const { session } = useLocalSearchParams<{ session?: string }>()
 
-    // Timer
-    const { totalSeconds, start, pause, reset } = useStopwatch({ autoStart: false })
-
-    // Store
+    // ── Store ─────────────────────────────────────────────────────────────────
     const {
         weightUnit,
+        workoutStatus,
         workoutExercises,
         setWeightUnit,
+        startSession,
+        pauseSession,
+        resumeSession,
+        clearSession,
+        getElapsedMs,
         addExercise,
         removeExercise,
         addSet,
         removeSet,
         updateSet,
         toggleSetCompleted,
-        resetWorkout,
     } = useWorkoutStore()
+
+    // ── Epoch-based timer — 1 s tick just for re-rendering ───────────────────
+    const [, setTick] = useState(0)
+    const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+    useEffect(() => {
+        if (workoutStatus === 'running') {
+            tickRef.current = setInterval(() => setTick((t) => t + 1), 1000)
+        } else {
+            if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null }
+        }
+        return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null } }
+    }, [workoutStatus])
+
+    // ── AppState: re-render when app comes back to foreground ─────────────────
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active') setTick((t) => t + 1)
+        })
+        return () => sub.remove()
+    }, [])
+
+    // Derived elapsed (recomputed fresh on every render tick)
+    const elapsedSeconds = Math.floor(getElapsedMs() / 1000)
 
     // Derived
     const hasExercises = workoutExercises.length > 0
+    // Can finish as soon as any single set is marked complete
+    const anySetComplete = workoutExercises.some(ex => ex.sets.some(s => s.isCompleted))
+    // All sets complete — used only for the green finish-button highlight
     const allSetsComplete = hasExercises && workoutExercises.every(
         ex => ex.sets.length > 0 && ex.sets.every(s => s.isCompleted)
     )
@@ -62,7 +91,7 @@ export default function ActiveWorkout() {
     const [isSaving, setIsSaving] = useState(false)
 
     // Track the last session param we handled.
-    // - New param value  → fresh workout start  → reset timer + exercises.
+    // - New param value  → fresh workout start  → clear + start timer.
     // - Same param value → returning from exercise-detail modal → do nothing.
     const lastSession = useRef<string | null>(null)
 
@@ -71,11 +100,10 @@ export default function ActiveWorkout() {
             if (session && session !== lastSession.current) {
                 // New session → fresh start
                 lastSession.current = session
-                reset(undefined, true)
-                resetWorkout()
-            } else if (lastSession.current) {
-                // Returning from a child screen (e.g. exercise-detail) → resume
-                start()
+                startSession()
+            } else if (workoutStatus === 'paused') {
+                // Returning from a dialog dismissal — resume automatically
+                resumeSession()
             }
             setShowPicker(false)
             setShowDiscardAlert(false)
@@ -83,9 +111,8 @@ export default function ActiveWorkout() {
             setShowErrorAlert(false)
             setErrorMessage('')
             setIsSaving(false)
-
-            return () => pause()
-        }, [session])
+            // No cleanup: ticker is managed by the workoutStatus useEffect above
+        }, [session, workoutStatus])
     )
 
 
@@ -97,19 +124,22 @@ export default function ActiveWorkout() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId,
-                    duration: totalSeconds,
-                    exercises: workoutExercises.map(ex => ({
-                        exerciseId: ex.sanityId,
-                        sets: ex.sets.map(s => ({
-                            reps: s.reps,
-                            weight: s.weight,
-                            weightUnit,
-                        })),
-                    })),
+                    duration: elapsedSeconds,
+                    // Only persist exercises that have at least one completed set,
+                    // and within those, only the completed sets.
+                    exercises: workoutExercises
+                        .map(ex => ({
+                            exerciseId: ex.sanityId,
+                            sets: ex.sets
+                                .filter(s => s.isCompleted)
+                                .map(s => ({ reps: s.reps, weight: s.weight, weightUnit })),
+                        }))
+                        .filter(ex => ex.sets.length > 0),
                 }),
             })
             if (res.ok) {
                 setShowFinishAlert(false)
+                clearSession()
                 setTimeout(() => router.replace({ pathname: '/(app)/(tabs)/history', params: { refresh: Date.now().toString() } }), 150)
             } else {
                 const data = await res.json().catch(() => ({}))
@@ -136,7 +166,9 @@ export default function ActiveWorkout() {
                 {/* Left: title + timer */}
                 <View>
                     <Text className='text-lg font-bold text-gray-900'>Active Workout</Text>
-                    <Text className='text-sm font-semibold text-primary mt-0.5'>{formatDuration(totalSeconds)}</Text>
+                    <View className='flex-row items-center gap-1.5 mt-0.5'>
+                        <Text className='text-sm font-semibold text-primary'>{formatDuration(elapsedSeconds)}</Text>
+                    </View>
                 </View>
 
                 {/* Right: unit toggle + actions */}
@@ -156,16 +188,16 @@ export default function ActiveWorkout() {
 
                     {!hasExercises ? (
                         /* No exercises — cancel with no confirmation */
-                        <Pressable onPress={() => router.back()} className='px-4 py-2 rounded-xl active:opacity-70 bg-ft-gray'>
+                        <Pressable onPress={() => { clearSession(); router.back() }} className='px-4 py-2 rounded-xl active:opacity-70 bg-ft-gray'>
                             <Text className='font-semibold text-sm text-gray-500'>Cancel</Text>
                         </Pressable>
                     ) : (
                         <>
-                            {/* Finish Workout — green when all sets done */}
+                            {/* Finish Workout — enabled once any set is complete; green when all sets done */}
                             <Pressable
-                                onPress={() => { pause(); setShowFinishAlert(true) }}
-                                disabled={isSaving}
-                                className={`rounded-xl px-4 py-2 active:opacity-80 ${allSetsComplete ? 'bg-ft-green' : 'bg-primary'}`}
+                                onPress={() => { pauseSession(); setShowFinishAlert(true) }}
+                                disabled={isSaving || !anySetComplete}
+                                className={`rounded-xl px-4 py-2 active:opacity-80 ${!anySetComplete ? 'bg-gray-300' : allSetsComplete ? 'bg-ft-green' : 'bg-primary'}`}
                             >
                                 {isSaving
                                     ? <ActivityIndicator size='small' color='#fff' />
@@ -180,7 +212,7 @@ export default function ActiveWorkout() {
                                         label: 'Start Over',
                                         icon: 'reload1',
                                         style: 'destructive',
-                                        onPress: () => { pause(); setShowDiscardAlert(true) },
+                                        onPress: () => { pauseSession(); setShowDiscardAlert(true) },
                                     },
                                 ]}
                             />
@@ -337,18 +369,17 @@ export default function ActiveWorkout() {
                 type='warning'
                 title='Start Over?'
                 message='All exercises and sets in this session will be removed.'
-                onDismiss={() => { start(); setShowDiscardAlert(false) }}
+                onDismiss={() => { resumeSession(); setShowDiscardAlert(false) }}
                 buttons={[
                     {
                         text: 'Start Over', style: 'destructive', onPress: () => {
                             setShowDiscardAlert(false)
-                            resetWorkout()
-                            reset(undefined, true)
+                            startSession()
                         }
                     },
                     {
                         text: 'Keep Going', style: 'cancel', onPress: () => {
-                            start()
+                            resumeSession()
                             setShowDiscardAlert(false)
                         }
                     },
@@ -359,16 +390,20 @@ export default function ActiveWorkout() {
                 visible={showFinishAlert}
                 type='success'
                 title='Finish Workout?'
-                message={`${formatDuration(totalSeconds)} · ${workoutExercises.length} exercise${workoutExercises.length !== 1 ? 's' : ''}. Save and complete?`}
+                message={(() => {
+                    const savedExercises = workoutExercises.filter(ex => ex.sets.some(s => s.isCompleted))
+                    const savedSets = workoutExercises.reduce((acc, ex) => acc + ex.sets.filter(s => s.isCompleted).length, 0)
+                    return `${formatDuration(elapsedSeconds)} · ${savedExercises.length} exercise${savedExercises.length !== 1 ? 's' : ''} · ${savedSets} completed set${savedSets !== 1 ? 's' : ''} will be saved.`
+                })()}
                 onDismiss={() => {
-                    if (!isSaving) { start(); setShowFinishAlert(false) }
+                    if (!isSaving) { resumeSession(); setShowFinishAlert(false) }
                 }}
                 loading={isSaving}
                 buttons={[
                     { text: 'Save Workout', style: 'default', onPress: handleFinish },
                     {
                         text: 'Keep Going', style: 'cancel', onPress: () => {
-                            start()  // resume timer
+                            resumeSession()
                             setShowFinishAlert(false)
                         }
                     },

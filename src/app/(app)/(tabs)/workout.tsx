@@ -1,12 +1,27 @@
+import FTAlert from '@/components/FTComponents/FTAlert'
 import TabHeader from '@/components/FTComponents/TabHeader'
+import { useWorkoutStore } from '../../../../store/workout-store'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import { useRouter } from 'expo-router'
-import React from 'react'
+import React, { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function Workout() {
     const router = useRouter()
+    const { workoutStatus, startSession, clearSession } = useWorkoutStore()
+    const [showActiveAlert, setShowActiveAlert] = useState(false)
+
+    const handleStartWorkout = () => {
+        if (workoutStatus !== 'idle') {
+            setShowActiveAlert(true)
+            return
+        }
+        router.push({
+            pathname: '/(tabs)/active-workout',
+            params: { session: Date.now().toString() },
+        } as never)
+    }
 
     return (
         <SafeAreaView className='flex-1 bg-gray-50' edges={['top']}>
@@ -26,10 +41,7 @@ export default function Workout() {
                 </Text>
 
                 <Pressable
-                    onPress={() => router.push({
-                        pathname: '/(tabs)/active-workout',
-                        params: { session: Date.now().toString() },
-                    } as never)}
+                    onPress={handleStartWorkout}
                     className='bg-primary w-full rounded-2xl py-4 items-center active:opacity-80'
                     style={{
                         shadowColor: '#0a7ea4',
@@ -45,7 +57,36 @@ export default function Workout() {
                     </View>
                 </Pressable>
             </View>
+
+            <FTAlert
+                visible={showActiveAlert}
+                type='warning'
+                title='Workout Already Active'
+                message='You have a workout in progress. Resume it or discard it to start a new one.'
+                onDismiss={() => setShowActiveAlert(false)}
+                buttons={[
+                    {
+                        text: 'Resume',
+                        style: 'default',
+                        onPress: () => {
+                            setShowActiveAlert(false)
+                            router.push('/(tabs)/active-workout' as never)
+                        },
+                    },
+                    {
+                        text: 'Discard & Start New',
+                        style: 'destructive',
+                        onPress: () => {
+                            setShowActiveAlert(false)
+                            clearSession()
+                            router.push({
+                                pathname: '/(tabs)/active-workout',
+                                params: { session: Date.now().toString() },
+                            } as never)
+                        },
+                    },
+                ]}
+            />
         </SafeAreaView>
     )
 }
-

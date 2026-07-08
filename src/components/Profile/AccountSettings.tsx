@@ -16,7 +16,7 @@ const SETTINGS_ITEMS: SettingItem[] = [
     { icon: 'edit', label: 'Edit Profile', iconBg: '#E0F2FE', iconColor: '#0a7ea4', route: '/profile/edit-profile' },
     { icon: 'lock', label: 'Update Password', iconBg: '#FFF7ED', iconColor: '#F97316', route: '/profile/update-password' },
     { icon: 'notification', label: 'Notifications', iconBg: '#ECFDF5', iconColor: '#10B981', route: '/profile/notifications' },
-    { icon: 'tool', label: 'Preferences', iconBg: '#EDE9FE', iconColor: '#8B5CF6', route: '/profile/preferences' },
+    // { icon: 'tool', label: 'Preferences', iconBg: '#EDE9FE', iconColor: '#8B5CF6', route: '/profile/preferences' },
     // { icon: 'lock',            label: 'Privacy',        iconBg: '#FFF7ED', iconColor: '#F97316', route: '/profile/privacy' },
     // { icon: 'questioncircleo', label: 'Help & Support', iconBg: '#FFFBEB', iconColor: '#F59E0B', route: '/profile/support' },
 ]

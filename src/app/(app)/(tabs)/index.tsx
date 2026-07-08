@@ -1,16 +1,18 @@
+import FTAlert from '@/components/FTComponents/FTAlert'
 import FTCard from '@/components/FTComponents/FTCard'
 import ProfileAchievements from '@/components/Profile/ProfileAchievements'
 import ProfileFitnessStats from '@/components/Profile/ProfileFitnessStats'
 import { sanityClient } from '@/lib/sanity/client'
 import { HOME_LAST_WORKOUT_QUERY_RESULT } from '@/lib/sanity/types'
 import { formatDuration, formatRelativeDate } from '@/lib/utils'
+import { useWorkoutStore } from '../../../../store/workout-store'
 import { useAuth, useUser } from '@clerk/expo'
 import AntDesign from '@expo/vector-icons/AntDesign'
+import { useRouter } from 'expo-router'
 import { defineQuery } from 'groq'
 import React, { useCallback, useEffect, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
 
 export const HOME_LAST_WORKOUT_QUERY = defineQuery(`
   *[_type == "workout" && userId == $userId] | order(date desc) [0] {
@@ -40,6 +42,19 @@ export default function HomePage() {
   const { userId } = useAuth()
   const { user } = useUser()
   const router = useRouter()
+  const { workoutStatus, clearSession } = useWorkoutStore()
+  const [showActiveAlert, setShowActiveAlert] = useState(false)
+
+  const handleStartWorkout = () => {
+    if (workoutStatus !== 'idle') {
+      setShowActiveAlert(true)
+      return
+    }
+    router.push({
+      pathname: '/(tabs)/active-workout',
+      params: { session: Date.now().toString() },
+    } as never)
+  }
   const [lastWorkout, setLastWorkout] = useState<HOME_LAST_WORKOUT_QUERY_RESULT>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
@@ -115,7 +130,7 @@ export default function HomePage() {
         {/* ── Start Workout CTA ── */}
         <View className='px-4 mt-4'>
           <Pressable
-            onPress={() => router.navigate('/(app)/(tabs)/workout')}
+            onPress={handleStartWorkout}
             className='bg-primary rounded-2xl px-5 py-4 flex-row items-center justify-between active:opacity-90'
           >
             <View className='flex-row items-center gap-3'>
@@ -199,6 +214,36 @@ export default function HomePage() {
           </View>
         )}
       </ScrollView>
+
+      <FTAlert
+        visible={showActiveAlert}
+        type='warning'
+        title='Workout Already Active'
+        message='You have a workout in progress. Resume it or discard it to start a new one.'
+        onDismiss={() => setShowActiveAlert(false)}
+        buttons={[
+          {
+            text: 'Resume',
+            style: 'default',
+            onPress: () => {
+              setShowActiveAlert(false)
+              router.push('/(tabs)/active-workout' as never)
+            },
+          },
+          {
+            text: 'Discard & Start New',
+            style: 'destructive',
+            onPress: () => {
+              setShowActiveAlert(false)
+              clearSession()
+              router.push({
+                pathname: '/(tabs)/active-workout',
+                params: { session: Date.now().toString() },
+              } as never)
+            },
+          },
+        ]}
+      />
     </SafeAreaView>
   )
 }

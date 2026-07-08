@@ -5,6 +5,7 @@ import ProfileFitnessStats from '@/components/Profile/ProfileFitnessStats'
 import TabHeader from '@/components/FTComponents/TabHeader'
 import { useAuth, useUser } from '@clerk/expo'
 import AntDesign from '@expo/vector-icons/AntDesign'
+import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import {
     Image,
@@ -17,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export default function ProfilePage() {
+    const router = useRouter()
     const { signOut, userId } = useAuth()
     const { user } = useUser()
     const [refreshKey, setRefreshKey] = useState(0)
@@ -70,19 +72,25 @@ export default function ProfilePage() {
                 {/* ── Profile card ── */}
                 <View className='px-4'>
                     <FTCard className='flex-row items-center gap-4'>
-                        {avatarUrl ? (
-                            <Image
-                                source={{ uri: avatarUrl }}
-                                style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: '#0a7ea4' }}
-                            />
-                        ) : (
-                            <View
-                                className='w-14 h-14 rounded-full bg-primary/10 items-center justify-center'
-                                style={{ borderWidth: 2, borderColor: '#0a7ea4' }}
-                            >
-                                <AntDesign name='user' size={24} color='#0a7ea4' />
-                            </View>
-                        )}
+                        <Pressable
+                            onPress={() => router.push('/profile/edit-profile' as never)}
+                            className='active:opacity-70'
+                            hitSlop={4}
+                        >
+                            {avatarUrl ? (
+                                <Image
+                                    source={{ uri: avatarUrl }}
+                                    style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: '#0a7ea4' }}
+                                />
+                            ) : (
+                                <View
+                                    className='w-14 h-14 rounded-full bg-primary/10 items-center justify-center'
+                                    style={{ borderWidth: 2, borderColor: '#0a7ea4' }}
+                                >
+                                    <AntDesign name='user' size={24} color='#0a7ea4' />
+                                </View>
+                            )}
+                        </Pressable>
                         <View className='flex-1'>
                             <Text className='text-base font-bold text-gray-900' numberOfLines={1}>
                                 {user?.fullName ?? user?.username ?? 'Athlete'}

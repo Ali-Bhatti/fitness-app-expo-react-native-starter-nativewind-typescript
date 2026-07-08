@@ -6,6 +6,8 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 
 export type WeightUnit = 'kg' | 'lbs'
 
+export type WorkoutStatus = 'idle' | 'running' | 'paused'
+
 export type WorkoutSet = {
     id: string
     /** Name of the exercise performed in this set (denormalized for display) */
@@ -34,17 +36,38 @@ function defaultSet(name: string, overrides?: Partial<WorkoutSet>): WorkoutSet {
     return { id: uid(), name, reps: '5', weight: '0', isCompleted: false, ...overrides }
 }
 
+function getDefaultSets(setCount: number = 2): WorkoutSet[] {
+    return Array.from({ length: setCount }, (_, i) => defaultSet(`Set ${i + 1}`))
+}
+
 // ─── Store interface ──────────────────────────────────────────────────────────
 
 interface WorkoutStore {
     /** Persisted — survives app restarts */
     weightUnit: WeightUnit
 
-    /** In-memory only — cleared on resetWorkout */
+    // ── Session timing (epoch-based, persisted for kill-recovery) ──────────────
+    /** idle | running | paused */
+    workoutStatus: WorkoutStatus
+    /** Epoch ms when the session first started */
+    startedAtEpochMs: number | null
+    /** Total ms that have been spent in the paused state so far */
+    accumulatedPausedMs: number
+    /** Epoch ms when the current pause began; null while running */
+    pausedAtEpochMs: number | null
+
+    /** Exercises — persisted so in-progress workout survives app kill */
     workoutExercises: WorkoutExercise[]
 
     // Unit
     setWeightUnit: (unit: WeightUnit) => void
+
+    // Session lifecycle
+    startSession: () => void
+    pauseSession: () => void
+    resumeSession: () => void
+    /** Clears exercises + timing; unit preference is kept */
+    clearSession: () => void
 
     // Exercises
     addExercise: (sanityId: string, name: string, target: string | null) => void
@@ -56,7 +79,13 @@ interface WorkoutStore {
     updateSet: (exerciseId: string, setId: string, field: 'reps' | 'weight', value: string) => void
     toggleSetCompleted: (exerciseId: string, setId: string) => void
 
-    /** Clears exercises only — unit preference is kept */
+    /**
+     * Returns elapsed milliseconds, correctly accounting for paused intervals.
+     * Call this at render time (not in a selector) for an accurate value.
+     */
+    getElapsedMs: () => number
+
+    /** @deprecated Use clearSession() */
     resetWorkout: () => void
 }
 
@@ -64,11 +93,61 @@ interface WorkoutStore {
 
 export const useWorkoutStore = create<WorkoutStore>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             weightUnit: 'kg',
+
+            workoutStatus: 'idle',
+            startedAtEpochMs: null,
+            accumulatedPausedMs: 0,
+            pausedAtEpochMs: null,
+
             workoutExercises: [],
 
             setWeightUnit: (unit) => set({ weightUnit: unit }),
+
+            // ── Session lifecycle ───────────────────────────────────────────────
+
+            startSession: () => set({
+                workoutStatus: 'running',
+                startedAtEpochMs: Date.now(),
+                accumulatedPausedMs: 0,
+                pausedAtEpochMs: null,
+                workoutExercises: [],
+            }),
+
+            pauseSession: () => set((state) => {
+                if (state.workoutStatus !== 'running') return state
+                return { workoutStatus: 'paused', pausedAtEpochMs: Date.now() }
+            }),
+
+            resumeSession: () => set((state) => {
+                if (state.workoutStatus !== 'paused' || state.pausedAtEpochMs === null) return state
+                return {
+                    workoutStatus: 'running',
+                    accumulatedPausedMs: state.accumulatedPausedMs + (Date.now() - state.pausedAtEpochMs),
+                    pausedAtEpochMs: null,
+                }
+            }),
+
+            clearSession: () => set({
+                workoutStatus: 'idle',
+                startedAtEpochMs: null,
+                accumulatedPausedMs: 0,
+                pausedAtEpochMs: null,
+                workoutExercises: [],
+            }),
+
+            getElapsedMs: () => {
+                const { startedAtEpochMs, workoutStatus, accumulatedPausedMs, pausedAtEpochMs } = get()
+                if (!startedAtEpochMs) return 0
+                // When paused: freeze at the moment pause began
+                const anchor = (workoutStatus === 'paused' && pausedAtEpochMs !== null)
+                    ? pausedAtEpochMs
+                    : Date.now()
+                return Math.max(0, anchor - startedAtEpochMs - accumulatedPausedMs)
+            },
+
+            // ── Exercises ──────────────────────────────────────────────────────
 
             addExercise: (sanityId, name, target) =>
                 set((state) => ({
@@ -79,7 +158,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
                             sanityId,
                             name,
                             target,
-                            sets: [defaultSet(name)],
+                            sets: getDefaultSets(),
                         },
                     ],
                 })),
@@ -141,13 +220,19 @@ export const useWorkoutStore = create<WorkoutStore>()(
                     }),
                 })),
 
-            resetWorkout: () => set({ workoutExercises: [] }),
+            resetWorkout: () => get().clearSession(),
         }),
         {
             name: 'workout-store',
             storage: createJSONStorage(() => AsyncStorage),
-            // Only persist the unit preference — exercises are always session-only
-            partialize: (state) => ({ weightUnit: state.weightUnit }),
+            partialize: (state) => ({
+                weightUnit: state.weightUnit,
+                workoutStatus: state.workoutStatus,
+                startedAtEpochMs: state.startedAtEpochMs,
+                accumulatedPausedMs: state.accumulatedPausedMs,
+                pausedAtEpochMs: state.pausedAtEpochMs,
+                workoutExercises: state.workoutExercises,
+            }),
         }
     )
 )

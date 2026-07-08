@@ -1,14 +1,30 @@
+import WorkoutMiniBanner from '@/components/WorkoutMiniBanner'
+import { useWorkoutStore } from '../../../../store/workout-store'
 import AntDesign from '@expo/vector-icons/AntDesign'
+import { BottomTabBar } from '@react-navigation/bottom-tabs'
 import { Tabs } from 'expo-router'
 import React from 'react'
-import { Image } from 'react-native'
+import { Image, View } from 'react-native'
 import { useUser } from '@clerk/expo'
 
 export default function Layout() {
     const { user } = useUser()
+    const { workoutStatus } = useWorkoutStore()
 
     return (
-        <Tabs screenOptions={{ tabBarActiveTintColor: '#0a7ea4' }}>
+        <Tabs
+            screenOptions={{ tabBarActiveTintColor: '#0a7ea4' }}
+            tabBar={(props) => {
+                const currentRoute = props.state.routes[props.state.index]?.name
+                const showBanner = workoutStatus !== 'idle' && currentRoute !== 'active-workout'
+                return (
+                    <View>
+                        {showBanner && <WorkoutMiniBanner />}
+                        <BottomTabBar {...props} />
+                    </View>
+                )
+            }}
+        >
             <Tabs.Screen
                 name="index"
                 options={{
@@ -48,7 +64,6 @@ export default function Layout() {
                     headerShown: false,
                     title: "Active Workout",
                     href: null,
-                    tabBarStyle: { display: "none" },
                 }}
             />
 
@@ -68,9 +83,6 @@ export default function Layout() {
                 options={{
                     headerShown: false,
                     title: "Profile",
-                    // tabBarIcon: ({ color, size }) => (
-                    //     <AntDesign name="user" size={size} color={color} />
-                    // ),
                     tabBarIcon: ({ color, size }) => (
                         <Image
                             source={{ uri: user?.imageUrl ?? user?.externalAccounts[0]?.imageUrl }}
