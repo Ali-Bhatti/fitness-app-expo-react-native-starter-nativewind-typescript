@@ -7,9 +7,13 @@ import {
 import { REST_DURATION_PRESETS, useNotificationStore } from '../../../../../store/notification-store'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import AntDesign from '@expo/vector-icons/AntDesign'
+import Constants, { ExecutionEnvironment } from 'expo-constants'
 import { useFocusEffect } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
-import { Linking, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native'
+import { AppState, Linking, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native'
+
+// expo-notifications permission APIs are broken in Expo Go SDK 53 — always return false
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient
 
 // Chips render Mon-first; values are expo weekday numbers (1 = Sunday … 7 = Saturday)
 const DAY_CHIPS: { label: string; weekday: number }[] = [
@@ -46,12 +50,19 @@ export default function Notifications() {
     const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null)
     const [showTimePicker, setShowTimePicker] = useState(false)
 
-    // Re-check on focus so the UI recovers after the user grants permission in system settings
+    // Re-check on focus (navigation) and on app foreground (returning from OS settings)
     useFocusEffect(
         useCallback(() => {
             void getPermissionGranted().then(setPermissionGranted)
         }, [])
     )
+
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', (state) => {
+            if (state === 'active') void getPermissionGranted().then(setPermissionGranted)
+        })
+        return () => sub.remove()
+    }, [])
 
     // Any reminder-setting change → cancel-all + reschedule
     useEffect(() => {
@@ -64,7 +75,7 @@ export default function Notifications() {
     }, [workoutRemindersEnabled, reminderDays, reminderTime])
 
     const guardedEnable = (setter: (v: boolean) => void) => async (value: boolean) => {
-        if (value) {
+        if (value && !isExpoGo) {
             const granted = await ensurePermission()
             setPermissionGranted(granted)
             if (!granted) return
@@ -75,7 +86,7 @@ export default function Notifications() {
     const timeAsDate = new Date()
     timeAsDate.setHours(reminderTime.hour, reminderTime.minute, 0, 0)
 
-    if (permissionGranted === false) {
+    if (permissionGranted === false && !isExpoGo) {
         return (
             <ScrollView className='flex-1 bg-gray-50' contentContainerStyle={{ padding: 16 }}>
                 <FTCard className='items-center py-10'>
@@ -100,6 +111,16 @@ export default function Notifications() {
 
     return (
         <ScrollView className='flex-1 bg-gray-50' contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+            {/* ── Expo Go warning banner ── */}
+            {isExpoGo && (
+                <View className='flex-row items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3'>
+                    <AntDesign name='infocirlceo' size={15} color='#D97706' style={{ marginTop: 1 }} />
+                    <Text className='text-xs text-amber-700 flex-1'>
+                        Notifications don't work in Expo Go. Use a dev build (<Text className='font-semibold'>npx expo run:android</Text>) to test them. Settings saved here will apply in the real app.
+                    </Text>
+                </View>
+            )}
+
             {/* ── Workout reminders ── */}
             <FTCard className='mb-3'>
                 <View className='flex-row items-center justify-between'>

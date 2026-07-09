@@ -18,9 +18,13 @@
       ],
       "@clerk/expo",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
     ],
     "name": "fit-app",
-    "slug": "fit-app"
+    "slug": "fit-app",
+    "ios": {
+      "bundleIdentifier": "com.anonymous.fit-app"
+    }
   }
 }
