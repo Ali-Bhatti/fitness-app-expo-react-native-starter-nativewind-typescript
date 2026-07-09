@@ -1,3 +1,10 @@
+jest.mock('@/lib/notifications', () => ({
+    scheduleRestEndNotification: jest.fn(async () => 'rest-notif-1'),
+    scheduleUnfinishedWorkoutReminder: jest.fn(async () => 'unfinished-1'),
+    cancelNotification: jest.fn(async () => {}),
+    UNFINISHED_REMINDER_DELAY_SEC: 7200,
+}))
+
 import { useWorkoutStore } from '../store/workout-store'
 
 describe('workout-store session lifecycle', () => {

@@ -1,3 +1,5 @@
+import { cancelNotification, scheduleRestEndNotification } from '@/lib/notifications'
+import { useNotificationStore } from './notification-store'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
@@ -56,6 +58,12 @@ interface WorkoutStore {
     /** Epoch ms when the current pause began; null while running */
     pausedAtEpochMs: number | null
 
+    // ── Rest timer (epoch-based, persisted like session timing) ────────────────
+    /** Epoch ms when the current rest ends; null when not resting */
+    restEndsAtEpochMs: number | null
+    /** Scheduled "rest over" notification id, kept so we can cancel it */
+    restNotificationId: string | null
+
     /** Exercises — persisted so in-progress workout survives app kill */
     workoutExercises: WorkoutExercise[]
 
@@ -79,6 +87,12 @@ interface WorkoutStore {
     updateSet: (exerciseId: string, setId: string, field: 'reps' | 'weight', value: string) => void
     toggleSetCompleted: (exerciseId: string, setId: string) => void
 
+    // Rest timer
+    startRest: (durationSec: number) => Promise<void>
+    skipRest: () => Promise<void>
+    /** +/− seconds on the running rest timer; clears it if remaining drops to 0 */
+    adjustRest: (deltaSec: number) => Promise<void>
+
     /**
      * Returns elapsed milliseconds, correctly accounting for paused intervals.
      * Call this at render time (not in a selector) for an accurate value.
@@ -100,6 +114,8 @@ export const useWorkoutStore = create<WorkoutStore>()(
             startedAtEpochMs: null,
             accumulatedPausedMs: 0,
             pausedAtEpochMs: null,
+            restEndsAtEpochMs: null,
+            restNotificationId: null,
 
             workoutExercises: [],
 
@@ -117,6 +133,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
 
             pauseSession: () => set((state) => {
                 if (state.workoutStatus !== 'running') return state
+                void get().skipRest()
                 return { workoutStatus: 'paused', pausedAtEpochMs: Date.now() }
             }),
 
@@ -129,13 +146,16 @@ export const useWorkoutStore = create<WorkoutStore>()(
                 }
             }),
 
-            clearSession: () => set({
-                workoutStatus: 'idle',
-                startedAtEpochMs: null,
-                accumulatedPausedMs: 0,
-                pausedAtEpochMs: null,
-                workoutExercises: [],
-            }),
+            clearSession: () => {
+                void get().skipRest()
+                set({
+                    workoutStatus: 'idle',
+                    startedAtEpochMs: null,
+                    accumulatedPausedMs: 0,
+                    pausedAtEpochMs: null,
+                    workoutExercises: [],
+                })
+            },
 
             getElapsedMs: () => {
                 const { startedAtEpochMs, workoutStatus, accumulatedPausedMs, pausedAtEpochMs } = get()
@@ -207,18 +227,61 @@ export const useWorkoutStore = create<WorkoutStore>()(
                     }),
                 })),
 
-            toggleSetCompleted: (exerciseId, setId) =>
+            toggleSetCompleted: (exerciseId, setId) => {
+                let becameCompleted = false
                 set((state) => ({
                     workoutExercises: state.workoutExercises.map((ex) => {
                         if (ex.id !== exerciseId) return ex
                         return {
                             ...ex,
-                            sets: ex.sets.map((s) =>
-                                s.id !== setId ? s : { ...s, isCompleted: !s.isCompleted }
-                            ),
+                            sets: ex.sets.map((s) => {
+                                if (s.id !== setId) return s
+                                if (!s.isCompleted) becameCompleted = true
+                                return { ...s, isCompleted: !s.isCompleted }
+                            }),
                         }
                     }),
-                })),
+                }))
+                if (becameCompleted && get().workoutStatus === 'running') {
+                    void get().startRest(useNotificationStore.getState().restDurationSec)
+                }
+            },
+
+            // ── Rest timer ─────────────────────────────────────────────────────
+
+            startRest: async (durationSec) => {
+                const prevId = get().restNotificationId
+                const endsAt = Date.now() + durationSec * 1000
+                set({ restEndsAtEpochMs: endsAt, restNotificationId: null })
+                await cancelNotification(prevId)
+                if (useNotificationStore.getState().restTimerAlertEnabled) {
+                    const id = await scheduleRestEndNotification(endsAt)
+                    set({ restNotificationId: id })
+                }
+            },
+
+            skipRest: async () => {
+                const prevId = get().restNotificationId
+                set({ restEndsAtEpochMs: null, restNotificationId: null })
+                await cancelNotification(prevId)
+            },
+
+            adjustRest: async (deltaSec) => {
+                const current = get().restEndsAtEpochMs
+                if (current === null) return
+                const newEndsAt = current + deltaSec * 1000
+                if (newEndsAt <= Date.now()) {
+                    await get().skipRest()
+                    return
+                }
+                const prevId = get().restNotificationId
+                set({ restEndsAtEpochMs: newEndsAt, restNotificationId: null })
+                await cancelNotification(prevId)
+                if (useNotificationStore.getState().restTimerAlertEnabled) {
+                    const id = await scheduleRestEndNotification(newEndsAt)
+                    set({ restNotificationId: id })
+                }
+            },
 
             resetWorkout: () => get().clearSession(),
         }),
@@ -231,6 +294,8 @@ export const useWorkoutStore = create<WorkoutStore>()(
                 startedAtEpochMs: state.startedAtEpochMs,
                 accumulatedPausedMs: state.accumulatedPausedMs,
                 pausedAtEpochMs: state.pausedAtEpochMs,
+                restEndsAtEpochMs: state.restEndsAtEpochMs,
+                restNotificationId: state.restNotificationId,
                 workoutExercises: state.workoutExercises,
             }),
         }
