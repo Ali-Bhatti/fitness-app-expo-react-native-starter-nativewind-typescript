@@ -1,4 +1,4 @@
-import { cancelNotification, scheduleRestEndNotification } from '@/lib/notifications'
+import { cancelNotification, scheduleRestEndNotification, scheduleUnfinishedWorkoutReminder } from '@/lib/notifications'
 import { useNotificationStore } from './notification-store'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
@@ -63,6 +63,8 @@ interface WorkoutStore {
     restEndsAtEpochMs: number | null
     /** Scheduled "rest over" notification id, kept so we can cancel it */
     restNotificationId: string | null
+    /** Scheduled unfinished-workout reminder id; set while app is backgrounded mid-session */
+    unfinishedReminderNotificationId: string | null
 
     /** Exercises — persisted so in-progress workout survives app kill */
     workoutExercises: WorkoutExercise[]
@@ -92,6 +94,8 @@ interface WorkoutStore {
     skipRest: () => Promise<void>
     /** +/− seconds on the running rest timer; clears it if remaining drops to 0 */
     adjustRest: (deltaSec: number) => Promise<void>
+    /** Call on AppState changes: schedules the 2 h nudge on background, cancels on foreground */
+    syncUnfinishedWorkoutReminder: (appState: 'background' | 'active') => Promise<void>
 
     /**
      * Returns elapsed milliseconds, correctly accounting for paused intervals.
@@ -116,6 +120,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
             pausedAtEpochMs: null,
             restEndsAtEpochMs: null,
             restNotificationId: null,
+            unfinishedReminderNotificationId: null,
 
             workoutExercises: [],
 
@@ -148,6 +153,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
 
             clearSession: () => {
                 void get().skipRest()
+                void get().syncUnfinishedWorkoutReminder('active')
                 set({
                     workoutStatus: 'idle',
                     startedAtEpochMs: null,
@@ -283,6 +289,20 @@ export const useWorkoutStore = create<WorkoutStore>()(
                 }
             },
 
+            syncUnfinishedWorkoutReminder: async (appState) => {
+                const prevId = get().unfinishedReminderNotificationId
+                set({ unfinishedReminderNotificationId: null })
+                await cancelNotification(prevId)
+                if (
+                    appState === 'background' &&
+                    get().workoutStatus !== 'idle' &&
+                    useNotificationStore.getState().pausedWorkoutReminderEnabled
+                ) {
+                    const id = await scheduleUnfinishedWorkoutReminder()
+                    set({ unfinishedReminderNotificationId: id })
+                }
+            },
+
             resetWorkout: () => get().clearSession(),
         }),
         {
@@ -296,6 +316,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
                 pausedAtEpochMs: state.pausedAtEpochMs,
                 restEndsAtEpochMs: state.restEndsAtEpochMs,
                 restNotificationId: state.restNotificationId,
+                unfinishedReminderNotificationId: state.unfinishedReminderNotificationId,
                 workoutExercises: state.workoutExercises,
             }),
         }

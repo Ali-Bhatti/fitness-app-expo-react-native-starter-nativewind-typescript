@@ -1,4 +1,5 @@
 import "../global.css";
+import NotificationsBootstrap from "@/components/NotificationsBootstrap";
 import { Slot } from "expo-router";
 import { ClerkProvider } from '@clerk/expo'
 import { tokenCache } from '@clerk/expo/token-cache'
@@ -14,6 +15,7 @@ export default function Layout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <SafeAreaProvider>
+        <NotificationsBootstrap />
         <Slot />
       </SafeAreaProvider>
     </ClerkProvider>
