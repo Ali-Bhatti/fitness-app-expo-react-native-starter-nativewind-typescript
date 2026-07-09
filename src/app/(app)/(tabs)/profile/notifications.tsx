@@ -5,12 +5,13 @@ import {
     rescheduleWorkoutReminders,
 } from '@/lib/notifications'
 import { REST_DURATION_PRESETS, useNotificationStore } from '../../../../../store/notification-store'
+import { useNotificationPrefsSync } from '@/hooks/useNotificationPrefsSync'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import AntDesign from '@expo/vector-icons/AntDesign'
 import Constants, { ExecutionEnvironment } from 'expo-constants'
 import { useFocusEffect } from 'expo-router'
 import React, { useCallback, useEffect, useState } from 'react'
-import { AppState, Linking, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native'
+import { AppState, Linking, Platform, Pressable, RefreshControl, ScrollView, Switch, Text, View } from 'react-native'
 
 // expo-notifications permission APIs are broken in Expo Go SDK 53 — always return false
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient
@@ -47,6 +48,8 @@ export default function Notifications() {
         setPausedWorkoutReminderEnabled,
     } = useNotificationStore()
 
+    const { refresh, isRefreshing } = useNotificationPrefsSync()
+
     const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null)
     const [showTimePicker, setShowTimePicker] = useState(false)
 
@@ -75,7 +78,7 @@ export default function Notifications() {
     }, [workoutRemindersEnabled, reminderDays, reminderTime])
 
     const guardedEnable = (setter: (v: boolean) => void) => async (value: boolean) => {
-        if (value && !isExpoGo) {
+        if (value && !isExpoGo && !permissionGranted) {
             const granted = await ensurePermission()
             setPermissionGranted(granted)
             if (!granted) return
@@ -88,7 +91,11 @@ export default function Notifications() {
 
     if (permissionGranted === false && !isExpoGo) {
         return (
-            <ScrollView className='flex-1 bg-gray-50' contentContainerStyle={{ padding: 16 }}>
+            <ScrollView
+                className='flex-1 bg-gray-50'
+                contentContainerStyle={{ padding: 16 }}
+                refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}
+            >
                 <FTCard className='items-center py-10'>
                     <View className='w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-4'>
                         <AntDesign name='notification' size={26} color='#0a7ea4' />
@@ -110,7 +117,11 @@ export default function Notifications() {
     }
 
     return (
-        <ScrollView className='flex-1 bg-gray-50' contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <ScrollView
+            className='flex-1 bg-gray-50'
+            contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}
+        >
             {/* ── Expo Go warning banner ── */}
             {isExpoGo && (
                 <View className='flex-row items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mb-3'>
@@ -213,7 +224,9 @@ export default function Notifications() {
                     />
                 </View>
 
-                <Text className='text-sm font-medium text-gray-600 mt-4 mb-2'>Rest duration</Text>
+                <Text className={`text-sm font-medium mt-4 mb-2 ${restTimerAlertEnabled ? 'text-gray-600' : 'text-gray-300'}`}>
+                    Rest duration
+                </Text>
                 <View className='flex-row gap-2'>
                     {REST_DURATION_PRESETS.map((sec) => {
                         const selected = restDurationSec === sec
@@ -221,9 +234,16 @@ export default function Notifications() {
                             <Pressable
                                 key={sec}
                                 onPress={() => setRestDurationSec(sec)}
-                                className={`flex-1 py-2 rounded-xl items-center ${selected ? 'bg-primary' : 'bg-gray-100'}`}
+                                disabled={!restTimerAlertEnabled}
+                                className={`flex-1 py-2 rounded-xl items-center ${
+                                    !restTimerAlertEnabled
+                                        ? 'bg-gray-100 opacity-40'
+                                        : selected ? 'bg-primary' : 'bg-gray-100'
+                                }`}
                             >
-                                <Text className={`text-sm font-semibold ${selected ? 'text-white' : 'text-gray-500'}`}>
+                                <Text className={`text-sm font-semibold ${
+                                    !restTimerAlertEnabled ? 'text-gray-400' : selected ? 'text-white' : 'text-gray-500'
+                                }`}>
                                     {sec < 120 ? `${sec}s` : `${sec / 60}m`}
                                 </Text>
                             </Pressable>
@@ -238,7 +258,7 @@ export default function Notifications() {
                     <View className='flex-1 mr-3'>
                         <Text className='text-base font-bold text-gray-900'>Unfinished Workout</Text>
                         <Text className='text-xs text-gray-400 mt-0.5'>
-                            Remind me 2 hours after leaving a workout unfinished
+                            Remind me 15 minutes after leaving a workout unfinished
                         </Text>
                     </View>
                     <Switch

@@ -3,8 +3,8 @@ import { Platform } from 'react-native'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** How long after backgrounding an unfinished workout before we nudge (2 h) */
-export const UNFINISHED_REMINDER_DELAY_SEC = 2 * 60 * 60
+/** How long after backgrounding an unfinished workout before we nudge (15 min) */
+export const UNFINISHED_REMINDER_DELAY_SEC = 15 * 60
 
 const WORKOUT_REMINDER_TYPE = 'workout-reminder'
 

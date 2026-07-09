@@ -1,6 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -9,21 +7,18 @@ export type ReminderTime = { hour: number; minute: number }
 /** Rest-duration preset options shown in the settings screen, in seconds */
 export const REST_DURATION_PRESETS = [60, 90, 120, 180] as const
 
-interface NotificationStore {
-    // ── Workout reminders ──────────────────────────────────────────────────────
+export interface NotificationPrefs {
     workoutRemindersEnabled: boolean
     /** expo-notifications weekday numbers: 1 = Sunday … 7 = Saturday */
     reminderDays: number[]
     reminderTime: ReminderTime
-
-    // ── Rest timer ─────────────────────────────────────────────────────────────
-    /** Whether the "rest over" notification fires when the app is backgrounded */
     restTimerAlertEnabled: boolean
     restDurationSec: number
-
-    // ── Unfinished workout ─────────────────────────────────────────────────────
     pausedWorkoutReminderEnabled: boolean
+}
 
+interface NotificationStore extends NotificationPrefs {
+    hydrate: (prefs: Partial<NotificationPrefs>) => void
     setWorkoutRemindersEnabled: (v: boolean) => void
     toggleReminderDay: (weekday: number) => void
     setReminderTime: (t: ReminderTime) => void
@@ -34,31 +29,24 @@ interface NotificationStore {
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
-export const useNotificationStore = create<NotificationStore>()(
-    persist(
-        (set) => ({
-            workoutRemindersEnabled: false,
-            reminderDays: [],
-            reminderTime: { hour: 18, minute: 0 },
-            restTimerAlertEnabled: true,
-            restDurationSec: 90,
-            pausedWorkoutReminderEnabled: true,
+export const useNotificationStore = create<NotificationStore>()((set) => ({
+    workoutRemindersEnabled: false,
+    reminderDays: [],
+    reminderTime: { hour: 18, minute: 0 },
+    restTimerAlertEnabled: true,
+    restDurationSec: 90,
+    pausedWorkoutReminderEnabled: true,
 
-            setWorkoutRemindersEnabled: (v) => set({ workoutRemindersEnabled: v }),
-            toggleReminderDay: (weekday) =>
-                set((s) => ({
-                    reminderDays: s.reminderDays.includes(weekday)
-                        ? s.reminderDays.filter((d) => d !== weekday)
-                        : [...s.reminderDays, weekday].sort((a, b) => a - b),
-                })),
-            setReminderTime: (t) => set({ reminderTime: t }),
-            setRestTimerAlertEnabled: (v) => set({ restTimerAlertEnabled: v }),
-            setRestDurationSec: (sec) => set({ restDurationSec: sec }),
-            setPausedWorkoutReminderEnabled: (v) => set({ pausedWorkoutReminderEnabled: v }),
-        }),
-        {
-            name: 'notification-store',
-            storage: createJSONStorage(() => AsyncStorage),
-        }
-    )
-)
+    hydrate: (prefs) => set(prefs),
+    setWorkoutRemindersEnabled: (v) => set({ workoutRemindersEnabled: v }),
+    toggleReminderDay: (weekday) =>
+        set((s) => ({
+            reminderDays: s.reminderDays.includes(weekday)
+                ? s.reminderDays.filter((d) => d !== weekday)
+                : [...s.reminderDays, weekday].sort((a, b) => a - b),
+        })),
+    setReminderTime: (t) => set({ reminderTime: t }),
+    setRestTimerAlertEnabled: (v) => set({ restTimerAlertEnabled: v }),
+    setRestDurationSec: (sec) => set({ restDurationSec: sec }),
+    setPausedWorkoutReminderEnabled: (v) => set({ pausedWorkoutReminderEnabled: v }),
+}))
