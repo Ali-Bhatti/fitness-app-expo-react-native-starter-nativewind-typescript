@@ -17,12 +17,23 @@ export interface NotificationPrefs {
     pausedWorkoutReminderEnabled: boolean
 }
 
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+    workoutRemindersEnabled: false,
+    reminderDays: [],
+    reminderTime: { hour: 18, minute: 0 },
+    restTimerAlertEnabled: true,
+    restDurationSec: 90,
+    pausedWorkoutReminderEnabled: true,
+}
+
 interface NotificationStore extends NotificationPrefs {
-    /** True once prefs have been hydrated from Clerk (or confirmed absent) at app startup */
+    /** True once prefs have been hydrated from Clerk (or confirmed absent) for the current user */
     hasHydrated: boolean
     hydrate: (prefs: Partial<NotificationPrefs>) => void
     /** Mark hydration complete without changing prefs — used on the "nothing to hydrate" path */
     markHydrated: () => void
+    /** Back to defaults with hasHydrated false — called when the signed-in user changes */
+    reset: () => void
     setWorkoutRemindersEnabled: (v: boolean) => void
     toggleReminderDay: (weekday: number) => void
     setReminderTime: (t: ReminderTime) => void
@@ -34,16 +45,12 @@ interface NotificationStore extends NotificationPrefs {
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useNotificationStore = create<NotificationStore>()((set) => ({
-    workoutRemindersEnabled: false,
-    reminderDays: [],
-    reminderTime: { hour: 18, minute: 0 },
-    restTimerAlertEnabled: true,
-    restDurationSec: 90,
-    pausedWorkoutReminderEnabled: true,
+    ...DEFAULT_NOTIFICATION_PREFS,
     hasHydrated: false,
 
     hydrate: (prefs) => set({ ...prefs, hasHydrated: true }),
     markHydrated: () => set({ hasHydrated: true }),
+    reset: () => set({ ...DEFAULT_NOTIFICATION_PREFS, hasHydrated: false }),
     setWorkoutRemindersEnabled: (v) => set({ workoutRemindersEnabled: v }),
     toggleReminderDay: (weekday) =>
         set((s) => ({

@@ -8,16 +8,25 @@ import { AppState, Platform } from 'react-native'
 
 /**
  * Mounted once in the root layout. Renders nothing.
- * - Hydrates notification prefs from Clerk at startup
- * - Installs the foreground notification handler + Android channel
- * - Deep-links notification taps to the screen in `data.url` (cold start + foreground)
- * - Schedules/cancels the unfinished-workout reminder on background/foreground
+ * - Hydrates notification prefs from Clerk at startup (all platforms)
+ * - On native only (expo-notifications has no web implementation):
+ *   - Installs the foreground notification handler + Android channel
+ *   - Deep-links notification taps to the screen in `data.url` (cold start + foreground)
+ *   - Schedules/cancels the unfinished-workout reminder on background/foreground
  */
 export default function NotificationsBootstrap() {
-    const syncUnfinishedWorkoutReminder = useWorkoutStore((s) => s.syncUnfinishedWorkoutReminder)
-
     // Pull saved prefs into the store once Clerk is loaded (see hook for details).
+    // Runs on web too — the store drives the in-app countdown, not just notifications.
     useNotificationPrefsHydration()
+
+    // Hooks can't be conditional, but a child component can be: keep every
+    // expo-notifications hook off the web render tree entirely.
+    if (Platform.OS === 'web') return null
+    return <NativeNotifications />
+}
+
+function NativeNotifications() {
+    const syncUnfinishedWorkoutReminder = useWorkoutStore((s) => s.syncUnfinishedWorkoutReminder)
 
     // Router readiness signal — router.push is a no-op / crashes before this exists.
     const navigationState = useRootNavigationState()
@@ -37,8 +46,6 @@ export default function NotificationsBootstrap() {
 
     // Foreground taps: listener exists while the app is running.
     useEffect(() => {
-        if (Platform.OS === 'web') return
-
         initNotifications()
 
         const responseSub = Notifications.addNotificationResponseReceivedListener(handleResponse)
@@ -58,7 +65,6 @@ export default function NotificationsBootstrap() {
     // Wait for the router to be ready, then navigate (the handled-id guard prevents a
     // double-navigation with the foreground listener).
     useEffect(() => {
-        if (Platform.OS === 'web') return
         if (!lastResponse || !navigationState?.key) return
         handleResponse(lastResponse)
     }, [lastResponse, navigationState?.key, handleResponse])

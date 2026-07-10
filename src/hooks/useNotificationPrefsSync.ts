@@ -7,8 +7,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Mounted once at the app root (inside NotificationsBootstrap). Pulls the saved
- * notification prefs out of Clerk `unsafeMetadata` into the store exactly once,
- * flipping `hasHydrated` so every consumer stops reading in-memory defaults.
+ * notification prefs out of Clerk `unsafeMetadata` into the store, flipping
+ * `hasHydrated` so every consumer stops reading in-memory defaults.
+ *
+ * Hydration is keyed on the user id, not once-per-process: on every identity
+ * transition (sign-in, account switch, sign-out) the store is reset to defaults
+ * first so one user's prefs never leak into another's session, then the new
+ * user's saved prefs (if any) are pulled.
  *
  * On a fresh device with stored prefs it also (re)schedules the OS workout
  * reminders so they survive a reinstall without opening the settings screen.
@@ -17,13 +22,23 @@ export function useNotificationPrefsHydration() {
     const { user, isLoaded } = useUser()
     const hydrate = useNotificationStore((s) => s.hydrate)
     const markHydrated = useNotificationStore((s) => s.markHydrated)
+    const reset = useNotificationStore((s) => s.reset)
 
-    const doneRef = useRef(false)
+    // Which user id we last hydrated for — undefined means "never run".
+    // A one-shot boolean would lock on the signed-out first tick and skip
+    // hydration when the user then signs in (or switches accounts).
+    const hydratedUserIdRef = useRef<string | null | undefined>(undefined)
 
     useEffect(() => {
         // Never mark hydrated while Clerk is still resolving — consumers must keep waiting.
-        if (doneRef.current || !isLoaded) return
-        doneRef.current = true
+        if (!isLoaded) return
+
+        const currentId = user?.id ?? null
+        if (hydratedUserIdRef.current === currentId) return
+        hydratedUserIdRef.current = currentId
+
+        // Identity changed — drop the previous identity's in-memory prefs first.
+        reset()
 
         const saved = user?.unsafeMetadata?.notificationPrefs as NotificationPrefs | undefined
         if (!saved) {
@@ -42,7 +57,7 @@ export function useNotificationPrefsHydration() {
             hour: s.reminderTime.hour,
             minute: s.reminderTime.minute,
         })
-    }, [isLoaded, user, hydrate, markHydrated])
+    }, [isLoaded, user, hydrate, markHydrated, reset])
 }
 
 // ─── Settings-screen write-back + refresh ────────────────────────────────────
@@ -67,9 +82,29 @@ export function useNotificationPrefsSync() {
 
     const [isRefreshing, setIsRefreshing] = useState(false)
 
+    // Debounced write-back plumbing (used by the effects below)
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const pendingWriteRef = useRef<(() => void) | null>(null)
+    // Skip the first run after each hydration so opening the screen (or a root
+    // re-hydration after an account switch) doesn't echo-write hydrated values back.
+    const firstRunSkippedRef = useRef(false)
+
     // Always points to the latest user — used inside timeouts to avoid stale closures
     const userRef = useRef(user)
-    useEffect(() => { userRef.current = user }, [user])
+    useEffect(() => {
+        // Identity change (sign-out / account switch): drop any pending debounced
+        // write — it holds the previous user's values — and re-arm the first-run
+        // skip so the next hydration isn't echo-written back to Clerk.
+        if (userRef.current?.id !== user?.id) {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current)
+                timerRef.current = null
+            }
+            pendingWriteRef.current = null
+            firstRunSkippedRef.current = false
+        }
+        userRef.current = user
+    }, [user])
 
     const applyPrefs = useCallback((u: typeof user) => {
         if (!u) return
@@ -94,13 +129,18 @@ export function useNotificationPrefsSync() {
 
     // Debounced write-back — deps are pref values only, NOT user, so it never fires
     // because Clerk refreshed the user ref; only when the user changed a preference.
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const pendingWriteRef = useRef<(() => void) | null>(null)
-    // Skip the first run after hydration (mount) so opening the screen doesn't write.
-    const firstRunSkippedRef = useRef(false)
-
     useEffect(() => {
-        if (!hasHydrated) return
+        if (!hasHydrated) {
+            // Re-hydration in progress (identity changed): drop any pending write —
+            // it holds the previous identity's values — and re-arm the first-run skip.
+            if (timerRef.current) {
+                clearTimeout(timerRef.current)
+                timerRef.current = null
+            }
+            pendingWriteRef.current = null
+            firstRunSkippedRef.current = false
+            return
+        }
         if (!firstRunSkippedRef.current) {
             firstRunSkippedRef.current = true
             return
