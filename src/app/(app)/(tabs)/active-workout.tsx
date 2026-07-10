@@ -1,4 +1,5 @@
 import FTAlert from '@/components/FTComponents/FTAlert'
+import RestTimerBar from '@/components/RestTimerBar'
 import FTCard from '@/components/FTComponents/FTCard'
 import FTMenu from '@/components/FTComponents/FTMenu'
 import ExerciseSelectionModal from '@/components/Exercises/ExerciseSelectionModal'
@@ -220,6 +221,9 @@ export default function ActiveWorkout() {
                     )}
                 </View>
             </View>
+
+            {/* ── Rest timer ── */}
+            <RestTimerBar />
 
             {/* ── Content ── */}
             <KeyboardAvoidingView
