@@ -84,6 +84,26 @@ describe('rest timer', () => {
         expect(useWorkoutStore.getState().restEndsAtEpochMs).toBeNull()
     })
 
+    test('a skip during the in-flight schedule cancels the late id and stores nothing', async () => {
+        // Make scheduleRestEndNotification hang until we resolve it manually.
+        let resolveSchedule!: (id: string) => void
+        ;(scheduleRestEndNotification as jest.Mock).mockImplementationOnce(
+            () => new Promise<string>((res) => { resolveSchedule = res })
+        )
+
+        const pending = useWorkoutStore.getState().startRest(90)
+        // The user skips while the schedule call is still awaiting.
+        await useWorkoutStore.getState().skipRest()
+        // Now the schedule resolves — its id belongs to a rest that no longer exists.
+        resolveSchedule('late-id')
+        await pending
+
+        const s = useWorkoutStore.getState()
+        expect(s.restEndsAtEpochMs).toBeNull()
+        expect(s.restNotificationId).toBeNull()
+        expect(cancelNotification).toHaveBeenCalledWith('late-id')
+    })
+
     test('pauseSession and clearSession clear the rest timer', async () => {
         useWorkoutStore.getState().startSession()
         await useWorkoutStore.getState().startRest(90)

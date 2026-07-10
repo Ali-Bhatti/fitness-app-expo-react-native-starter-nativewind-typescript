@@ -46,6 +46,7 @@ export default function Notifications() {
         setRestTimerAlertEnabled,
         setRestDurationSec,
         setPausedWorkoutReminderEnabled,
+        hasHydrated,
     } = useNotificationStore()
 
     const { refresh, isRefreshing } = useNotificationPrefsSync()
@@ -67,15 +68,18 @@ export default function Notifications() {
         return () => sub.remove()
     }, [])
 
-    // Any reminder-setting change → cancel-all + reschedule
+    // Any reminder-setting change → cancel-all + reschedule.
+    // Wait for hydration: running with pre-hydration defaults (enabled: false) would
+    // cancel the user's already-scheduled reminders.
     useEffect(() => {
+        if (!hasHydrated) return
         void rescheduleWorkoutReminders({
             enabled: workoutRemindersEnabled,
             days: reminderDays,
             hour: reminderTime.hour,
             minute: reminderTime.minute,
         })
-    }, [workoutRemindersEnabled, reminderDays, reminderTime])
+    }, [hasHydrated, workoutRemindersEnabled, reminderDays, reminderTime])
 
     const guardedEnable = (setter: (v: boolean) => void) => async (value: boolean) => {
         if (value && !isExpoGo && !permissionGranted) {
@@ -224,7 +228,9 @@ export default function Notifications() {
                     />
                 </View>
 
-                <Text className={`text-sm font-medium mt-4 mb-2 ${restTimerAlertEnabled ? 'text-gray-600' : 'text-gray-300'}`}>
+                {/* Duration drives the in-app countdown regardless of the alert toggle,
+                    so presets stay selectable even when the notification is off. */}
+                <Text className='text-sm font-medium mt-4 mb-2 text-gray-600'>
                     Rest duration
                 </Text>
                 <View className='flex-row gap-2'>
@@ -234,16 +240,9 @@ export default function Notifications() {
                             <Pressable
                                 key={sec}
                                 onPress={() => setRestDurationSec(sec)}
-                                disabled={!restTimerAlertEnabled}
-                                className={`flex-1 py-2 rounded-xl items-center ${
-                                    !restTimerAlertEnabled
-                                        ? 'bg-gray-100 opacity-40'
-                                        : selected ? 'bg-primary' : 'bg-gray-100'
-                                }`}
+                                className={`flex-1 py-2 rounded-xl items-center ${selected ? 'bg-primary' : 'bg-gray-100'}`}
                             >
-                                <Text className={`text-sm font-semibold ${
-                                    !restTimerAlertEnabled ? 'text-gray-400' : selected ? 'text-white' : 'text-gray-500'
-                                }`}>
+                                <Text className={`text-sm font-semibold ${selected ? 'text-white' : 'text-gray-500'}`}>
                                     {sec < 120 ? `${sec}s` : `${sec / 60}m`}
                                 </Text>
                             </Pressable>

@@ -42,6 +42,12 @@ function getDefaultSets(setCount: number = 2): WorkoutSet[] {
     return Array.from({ length: setCount }, (_, i) => defaultSet(`Set ${i + 1}`))
 }
 
+// Generation counter for the unfinished-workout reminder. Bumped on every sync call so an
+// in-flight schedule whose await resolves after a newer sync ran can detect it's stale and
+// cancel its orphaned notification id instead of storing it. (The rest timer uses its
+// restEndsAtEpochMs as the equivalent ownership key.)
+let unfinishedReminderSeq = 0
+
 // ─── Store interface ──────────────────────────────────────────────────────────
 
 interface WorkoutStore {
@@ -94,7 +100,7 @@ interface WorkoutStore {
     skipRest: () => Promise<void>
     /** +/− seconds on the running rest timer; clears it if remaining drops to 0 */
     adjustRest: (deltaSec: number) => Promise<void>
-    /** Call on AppState changes: schedules the 2 h nudge on background, cancels on foreground */
+    /** Call on AppState changes: schedules the 15 min nudge on background, cancels on foreground */
     syncUnfinishedWorkoutReminder: (appState: 'background' | 'active') => Promise<void>
 
     /**
@@ -262,7 +268,13 @@ export const useWorkoutStore = create<WorkoutStore>()(
                 await cancelNotification(prevId)
                 if (useNotificationStore.getState().restTimerAlertEnabled) {
                     const id = await scheduleRestEndNotification(endsAt)
-                    set({ restNotificationId: id })
+                    // A skip/pause/clear/new-startRest may have run during the await —
+                    // only keep the id if this rest is still the current one.
+                    if (get().restEndsAtEpochMs === endsAt) {
+                        set({ restNotificationId: id })
+                    } else {
+                        void cancelNotification(id)
+                    }
                 }
             },
 
@@ -285,11 +297,17 @@ export const useWorkoutStore = create<WorkoutStore>()(
                 await cancelNotification(prevId)
                 if (useNotificationStore.getState().restTimerAlertEnabled) {
                     const id = await scheduleRestEndNotification(newEndsAt)
-                    set({ restNotificationId: id })
+                    // Bail if the rest was skipped/replaced while we were scheduling.
+                    if (get().restEndsAtEpochMs === newEndsAt) {
+                        set({ restNotificationId: id })
+                    } else {
+                        void cancelNotification(id)
+                    }
                 }
             },
 
             syncUnfinishedWorkoutReminder: async (appState) => {
+                const seq = ++unfinishedReminderSeq
                 const prevId = get().unfinishedReminderNotificationId
                 set({ unfinishedReminderNotificationId: null })
                 await cancelNotification(prevId)
@@ -299,7 +317,13 @@ export const useWorkoutStore = create<WorkoutStore>()(
                     useNotificationStore.getState().pausedWorkoutReminderEnabled
                 ) {
                     const id = await scheduleUnfinishedWorkoutReminder()
-                    set({ unfinishedReminderNotificationId: id })
+                    // A newer sync (e.g. a quick foreground) may have run during the await —
+                    // only keep the id if this call is still the latest.
+                    if (seq === unfinishedReminderSeq) {
+                        set({ unfinishedReminderNotificationId: id })
+                    } else {
+                        void cancelNotification(id)
+                    }
                 }
             },
 

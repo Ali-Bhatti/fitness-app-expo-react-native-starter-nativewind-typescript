@@ -9,7 +9,23 @@ describe('notification-store', () => {
         expect(s.restTimerAlertEnabled).toBe(true)
         expect(s.restDurationSec).toBe(90)
         expect(s.pausedWorkoutReminderEnabled).toBe(true)
+        expect(s.hasHydrated).toBe(false)
         expect(REST_DURATION_PRESETS).toEqual([60, 90, 120, 180])
+    })
+
+    test('hydrate applies prefs and flips hasHydrated', () => {
+        useNotificationStore.getState().hydrate({ restDurationSec: 180 })
+        const s = useNotificationStore.getState()
+        expect(s.restDurationSec).toBe(180)
+        expect(s.hasHydrated).toBe(true)
+    })
+
+    test('markHydrated flips hasHydrated without touching prefs', () => {
+        useNotificationStore.setState({ hasHydrated: false, restDurationSec: 60 })
+        useNotificationStore.getState().markHydrated()
+        const s = useNotificationStore.getState()
+        expect(s.hasHydrated).toBe(true)
+        expect(s.restDurationSec).toBe(60)
     })
 
     test('toggleReminderDay adds then removes a day, kept sorted', () => {
